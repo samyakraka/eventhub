@@ -1,23 +1,48 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useState } from "react"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { useForm } from "react-hook-form"
-import { z } from "zod"
-import { format } from "date-fns"
-import { CalendarIcon, Upload } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Calendar } from "@/components/ui/calendar"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
-import { Input } from "@/components/ui/input"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { cn } from "@/lib/utils"
+import { useState } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { format } from "date-fns";
+import { CalendarIcon, Upload } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { cn } from "@/lib/utils";
 
 const formSchema = z.object({
   title: z.string().min(2, {
@@ -37,14 +62,15 @@ const formSchema = z.object({
   }),
   location: z.string().optional(),
   virtualLink: z.string().url().optional(),
-})
+});
 
 export default function CreateEventPage() {
-  const [activeTab, setActiveTab] = useState("details")
-  const [eventType, setEventType] = useState("physical")
-  const [previewImage, setPreviewImage] = useState<string | null>(null)
-  const [previewBanner, setPreviewBanner] = useState<string | null>(null)
-  const [primaryColor, setPrimaryColor] = useState("#3b82f6")
+  const [activeTab, setActiveTab] = useState("details");
+  const [eventType, setEventType] = useState("physical");
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [previewBanner, setPreviewBanner] = useState<string | null>(null);
+  const [primaryColor, setPrimaryColor] = useState("#3b82f6");
+  const [eventData, setEventData] = useState<any>(null);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -55,33 +81,59 @@ export default function CreateEventPage() {
       location: "",
       virtualLink: "",
     },
-  })
+  });
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    console.log(values)
-    // Here you would typically send the data to your API
-    alert("Event created successfully!")
-  }
-
+  // Restrict image size and convert to base64
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      const reader = new FileReader()
+    const file = e.target.files?.[0];
+    if (file && file.size <= 1024 * 1024) {
+      const reader = new FileReader();
       reader.onloadend = () => {
-        setPreviewImage(reader.result as string)
-      }
-      reader.readAsDataURL(file)
+        setPreviewImage(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    } else if (file) {
+      alert("Logo must be less than 1MB.");
     }
-  }
+  };
 
   const handleBannerUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      const reader = new FileReader()
+    const file = e.target.files?.[0];
+    if (file && file.size <= 1024 * 1024) {
+      const reader = new FileReader();
       reader.onloadend = () => {
-        setPreviewBanner(reader.result as string)
+        setPreviewBanner(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    } else if (file) {
+      alert("Banner image must be less than 1MB.");
+    }
+  };
+
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    console.log(values);
+    // Here you would typically send the data to your API
+    const payload = {
+      ...values,
+      logo: previewImage,
+      banner: previewBanner,
+      primaryColor,
+      createdAt: new Date().toISOString(),
+    };
+    setEventData(payload);
+    try {
+      const res = await fetch("/api/events", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (res.ok) {
+        alert("Event created successfully!");
+      } else {
+        alert("Failed to create event.");
       }
-      reader.readAsDataURL(file)
+    } catch (e) {
+      alert("Error creating event.");
     }
   }
 
@@ -89,7 +141,9 @@ export default function CreateEventPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Create Event</h1>
-        <p className="text-muted-foreground">Fill in the details to create a new event.</p>
+        <p className="text-muted-foreground">
+          Fill in the details to create a new event.
+        </p>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -103,11 +157,16 @@ export default function CreateEventPage() {
           <Card>
             <CardHeader>
               <CardTitle>Event Information</CardTitle>
-              <CardDescription>Enter the basic details about your event.</CardDescription>
+              <CardDescription>
+                Enter the basic details about your event.
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                <form
+                  onSubmit={form.handleSubmit(onSubmit)}
+                  className="space-y-6"
+                >
                   <FormField
                     control={form.control}
                     name="title"
@@ -115,9 +174,14 @@ export default function CreateEventPage() {
                       <FormItem>
                         <FormLabel>Event Title</FormLabel>
                         <FormControl>
-                          <Input placeholder="Annual Tech Conference 2025" {...field} />
+                          <Input
+                            placeholder="Annual Tech Conference 2025"
+                            {...field}
+                          />
                         </FormControl>
-                        <FormDescription>This will be the main title displayed for your event.</FormDescription>
+                        <FormDescription>
+                          This will be the main title displayed for your event.
+                        </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -130,9 +194,15 @@ export default function CreateEventPage() {
                       <FormItem>
                         <FormLabel>Description</FormLabel>
                         <FormControl>
-                          <Textarea placeholder="Describe your event..." className="min-h-32" {...field} />
+                          <Textarea
+                            placeholder="Describe your event..."
+                            className="min-h-32"
+                            {...field}
+                          />
                         </FormControl>
-                        <FormDescription>Provide details about what attendees can expect.</FormDescription>
+                        <FormDescription>
+                          Provide details about what attendees can expect.
+                        </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -152,16 +222,28 @@ export default function CreateEventPage() {
                                   variant={"outline"}
                                   className={cn(
                                     "w-full pl-3 text-left font-normal",
-                                    !field.value && "text-muted-foreground",
+                                    !field.value && "text-muted-foreground"
                                   )}
                                 >
-                                  {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
+                                  {field.value ? (
+                                    format(field.value, "PPP")
+                                  ) : (
+                                    <span>Pick a date</span>
+                                  )}
                                   <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                                 </Button>
                               </FormControl>
                             </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="start">
-                              <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus />
+                            <PopoverContent
+                              className="w-auto p-0"
+                              align="start"
+                            >
+                              <Calendar
+                                mode="single"
+                                selected={field.value}
+                                onSelect={field.onChange}
+                                initialFocus
+                              />
                             </PopoverContent>
                           </Popover>
                           <FormMessage />
@@ -190,7 +272,10 @@ export default function CreateEventPage() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Event Type</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <Select
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                        >
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Select event type" />
@@ -212,7 +297,9 @@ export default function CreateEventPage() {
                     <div className="flex items-center space-x-2">
                       <Button
                         type="button"
-                        variant={eventType === "physical" ? "default" : "outline"}
+                        variant={
+                          eventType === "physical" ? "default" : "outline"
+                        }
                         onClick={() => setEventType("physical")}
                         className="w-full"
                       >
@@ -220,7 +307,9 @@ export default function CreateEventPage() {
                       </Button>
                       <Button
                         type="button"
-                        variant={eventType === "virtual" ? "default" : "outline"}
+                        variant={
+                          eventType === "virtual" ? "default" : "outline"
+                        }
                         onClick={() => setEventType("virtual")}
                         className="w-full"
                       >
@@ -236,9 +325,15 @@ export default function CreateEventPage() {
                           <FormItem>
                             <FormLabel>Location</FormLabel>
                             <FormControl>
-                              <Input placeholder="123 Conference Center, City" {...field} />
+                              <Input
+                                placeholder="123 Conference Center, City"
+                                {...field}
+                              />
                             </FormControl>
-                            <FormDescription>The physical address where the event will take place.</FormDescription>
+                            <FormDescription>
+                              The physical address where the event will take
+                              place.
+                            </FormDescription>
                             <FormMessage />
                           </FormItem>
                         )}
@@ -251,9 +346,15 @@ export default function CreateEventPage() {
                           <FormItem>
                             <FormLabel>Virtual Link</FormLabel>
                             <FormControl>
-                              <Input placeholder="https://meeting.example.com/event" {...field} />
+                              <Input
+                                placeholder="https://meeting.example.com/event"
+                                {...field}
+                              />
                             </FormControl>
-                            <FormDescription>The URL where attendees can join the virtual event.</FormDescription>
+                            <FormDescription>
+                              The URL where attendees can join the virtual
+                              event.
+                            </FormDescription>
                             <FormMessage />
                           </FormItem>
                         )}
@@ -261,7 +362,10 @@ export default function CreateEventPage() {
                     )}
                   </div>
 
-                  <Button type="button" onClick={() => setActiveTab("customization")}>
+                  <Button
+                    type="button"
+                    onClick={() => setActiveTab("customization")}
+                  >
                     Continue to Customization
                   </Button>
                 </form>
@@ -274,7 +378,9 @@ export default function CreateEventPage() {
           <Card>
             <CardHeader>
               <CardTitle>Event Customization</CardTitle>
-              <CardDescription>Customize the appearance of your event page.</CardDescription>
+              <CardDescription>
+                Customize the appearance of your event page.
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div>
@@ -292,8 +398,15 @@ export default function CreateEventPage() {
                     )}
                   </div>
                   <div className="flex-1">
-                    <Input type="file" accept="image/*" onChange={handleLogoUpload} className="mb-2" />
-                    <p className="text-sm text-muted-foreground">Recommended size: 200x200px. Max file size: 2MB.</p>
+                    <Input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleLogoUpload}
+                      className="mb-2"
+                    />
+                    <p className="text-sm text-muted-foreground">
+                      Recommended size: 200x200px. Max file size: 2MB.
+                    </p>
                   </div>
                 </div>
               </div>
@@ -315,8 +428,14 @@ export default function CreateEventPage() {
                       </div>
                     )}
                   </div>
-                  <Input type="file" accept="image/*" onChange={handleBannerUpload} />
-                  <p className="text-sm text-muted-foreground">Recommended size: 1200x400px. Max file size: 5MB.</p>
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleBannerUpload}
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    Recommended size: 1200x400px. Max file size: 5MB.
+                  </p>
                 </div>
               </div>
 
@@ -331,17 +450,23 @@ export default function CreateEventPage() {
                   />
                   <div className="flex-1">
                     <p className="text-sm text-muted-foreground">
-                      This color will be used for buttons and accents on your event page.
+                      This color will be used for buttons and accents on your
+                      event page.
                     </p>
                   </div>
                 </div>
               </div>
 
               <div className="flex justify-between">
-                <Button variant="outline" onClick={() => setActiveTab("details")}>
+                <Button
+                  variant="outline"
+                  onClick={() => setActiveTab("details")}
+                >
                   Back to Details
                 </Button>
-                <Button onClick={() => setActiveTab("preview")}>Continue to Preview</Button>
+                <Button onClick={() => setActiveTab("preview")}>
+                  Continue to Preview
+                </Button>
               </div>
             </CardContent>
           </Card>
@@ -351,7 +476,9 @@ export default function CreateEventPage() {
           <Card>
             <CardHeader>
               <CardTitle>Event Preview</CardTitle>
-              <CardDescription>Review how your event will appear to attendees.</CardDescription>
+              <CardDescription>
+                Review how your event will appear to attendees.
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="rounded-lg border overflow-hidden">
@@ -379,45 +506,60 @@ export default function CreateEventPage() {
                 </div>
 
                 <div className="p-6 pt-10">
-                  <h2 className="text-2xl font-bold mb-2">{form.watch("title") || "Event Title"}</h2>
+                  <h2 className="text-2xl font-bold mb-2">
+                    {form.watch("title") || "Event Title"}
+                  </h2>
 
                   <div className="flex items-center gap-2 mb-4">
                     <span className="inline-flex h-6 items-center rounded-full bg-primary/10 px-2 text-xs font-medium text-primary">
-                      {form.watch("type")?.charAt(0).toUpperCase() + form.watch("type")?.slice(1) || "Event Type"}
+                      {form.watch("type")?.charAt(0).toUpperCase() +
+                        form.watch("type")?.slice(1) || "Event Type"}
                     </span>
 
                     <span className="text-sm text-muted-foreground">
-                      {form.watch("date") ? format(form.watch("date"), "PPP") : "Event Date"} •{" "}
-                      {form.watch("time") || "Event Time"}
+                      {form.watch("date")
+                        ? format(form.watch("date"), "PPP")
+                        : "Event Date"}{" "}
+                      • {form.watch("time") || "Event Time"}
                     </span>
                   </div>
 
                   <p className="text-muted-foreground mb-4">
-                    {form.watch("description") || "Event description will appear here..."}
+                    {form.watch("description") ||
+                      "Event description will appear here..."}
                   </p>
 
                   <div className="mb-6">
                     <h3 className="font-medium mb-1">Location</h3>
                     <p className="text-sm text-muted-foreground">
                       {eventType === "physical"
-                        ? form.watch("location") || "Physical location will appear here"
-                        : form.watch("virtualLink") || "Virtual link will appear here"}
+                        ? form.watch("location") ||
+                          "Physical location will appear here"
+                        : form.watch("virtualLink") ||
+                          "Virtual link will appear here"}
                     </p>
                   </div>
 
-                  <Button style={{ backgroundColor: primaryColor }}>Register Now</Button>
+                  <Button style={{ backgroundColor: primaryColor }}>
+                    Register Now
+                  </Button>
                 </div>
               </div>
             </CardContent>
             <CardFooter className="flex justify-between">
-              <Button variant="outline" onClick={() => setActiveTab("customization")}>
+              <Button
+                variant="outline"
+                onClick={() => setActiveTab("customization")}
+              >
                 Back to Customization
               </Button>
-              <Button onClick={form.handleSubmit(onSubmit)}>Create Event</Button>
+              <Button onClick={form.handleSubmit(onSubmit)}>
+                Create Event
+              </Button>
             </CardFooter>
           </Card>
         </TabsContent>
       </Tabs>
     </div>
-  )
+  );
 }

@@ -1,13 +1,25 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Badge } from "@/components/ui/badge"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { useState, useEffect } from "react";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   MapPin,
   Users,
@@ -21,123 +33,58 @@ import {
   Archive,
   Trash2,
   Eye,
-} from "lucide-react"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-
-// Mock data for events
-const events = [
-  {
-    id: "evt-001",
-    title: "Annual Tech Conference",
-    date: "May 15-17, 2025",
-    location: "San Francisco Convention Center",
-    type: "Conference",
-    attendees: 1250,
-    status: "upcoming",
-    sales: 45600,
-    image: "/placeholder.svg?height=100&width=200",
-  },
-  {
-    id: "evt-002",
-    title: "Summer Music Festival",
-    date: "July 10-12, 2025",
-    location: "Central Park, New York",
-    type: "Festival",
-    attendees: 5000,
-    status: "upcoming",
-    sales: 125000,
-    image: "/placeholder.svg?height=100&width=200",
-  },
-  {
-    id: "evt-003",
-    title: "Virtual AI Summit",
-    date: "June 5, 2025",
-    location: "Online Event",
-    type: "Virtual",
-    attendees: 3200,
-    status: "upcoming",
-    sales: 64000,
-    image: "/placeholder.svg?height=100&width=200",
-  },
-  {
-    id: "evt-004",
-    title: "Product Launch Webinar",
-    date: "May 28, 2025",
-    location: "Online Event",
-    type: "Webinar",
-    attendees: 1800,
-    status: "live",
-    sales: 0,
-    image: "/placeholder.svg?height=100&width=200",
-  },
-  {
-    id: "evt-005",
-    title: "Charity Gala Dinner",
-    date: "August 20, 2025",
-    location: "Grand Hyatt Hotel",
-    type: "Gala",
-    attendees: 450,
-    status: "upcoming",
-    sales: 90000,
-    image: "/placeholder.svg?height=100&width=200",
-  },
-  {
-    id: "evt-006",
-    title: "Spring Music Festival",
-    date: "April 15, 2025",
-    location: "Riverside Park",
-    type: "Festival",
-    attendees: 2500,
-    status: "completed",
-    sales: 75000,
-    image: "/placeholder.svg?height=100&width=200",
-  },
-  {
-    id: "evt-007",
-    title: "Networking Breakfast",
-    date: "March 10, 2025",
-    location: "Downtown Hotel",
-    type: "Networking",
-    attendees: 120,
-    status: "completed",
-    sales: 6000,
-    image: "/placeholder.svg?height=100&width=200",
-  },
-  {
-    id: "evt-008",
-    title: "Industry Panel",
-    date: "February 28, 2025",
-    location: "Conference Center",
-    type: "Panel",
-    attendees: 350,
-    status: "completed",
-    sales: 17500,
-    image: "/placeholder.svg?height=100&width=200",
-  },
-]
+} from "lucide-react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 export default function EventsPage() {
-  const [searchQuery, setSearchQuery] = useState("")
-  const [viewMode, setViewMode] = useState("grid")
-  const [statusFilter, setStatusFilter] = useState("all")
+  const [searchQuery, setSearchQuery] = useState("");
+  const [viewMode, setViewMode] = useState("grid");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [events, setEvents] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchEvents() {
+      setLoading(true);
+      try {
+        const res = await fetch("/api/events");
+        const data = await res.json();
+        setEvents(data.events || []);
+      } catch {
+        setEvents([]);
+      }
+      setLoading(false);
+    }
+    fetchEvents();
+  }, []);
 
   // Filter events based on search query and status
   const filteredEvents = events.filter((event) => {
     const matchesSearch =
-      event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      event.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      event.type.toLowerCase().includes(searchQuery.toLowerCase())
+      event.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      event.location?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      event.type?.toLowerCase().includes(searchQuery.toLowerCase());
 
-    const matchesStatus = statusFilter === "all" || event.status === statusFilter
+    const matchesStatus =
+      statusFilter === "all" || event.status === statusFilter;
 
-    return matchesSearch && matchesStatus
-  })
+    return matchesSearch && matchesStatus;
+  });
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">My Events</h1>
-        <p className="text-muted-foreground">Manage and track all your events in one place.</p>
+        <p className="text-muted-foreground">
+          Manage and track all your events in one place.
+        </p>
       </div>
 
       <div className="flex flex-col sm:flex-row justify-between gap-4">
@@ -159,10 +106,18 @@ export default function EventsPage() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => setStatusFilter("all")}>All Events</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setStatusFilter("upcoming")}>Upcoming Events</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setStatusFilter("live")}>Live Events</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setStatusFilter("completed")}>Past Events</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setStatusFilter("all")}>
+                All Events
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setStatusFilter("upcoming")}>
+                Upcoming Events
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setStatusFilter("live")}>
+                Live Events
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setStatusFilter("completed")}>
+                Past Events
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
           <DropdownMenu>
@@ -215,13 +170,15 @@ export default function EventsPage() {
         </TabsList>
 
         <TabsContent value="all" className="space-y-4">
-          {viewMode === "grid" ? (
+          {loading ? (
+            <div>Loading events...</div>
+          ) : viewMode === "grid" ? (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {filteredEvents.map((event) => (
-                <Card key={event.id} className="overflow-hidden">
+                <Card key={event._id} className="overflow-hidden">
                   <div className="aspect-video relative">
                     <img
-                      src={event.image || "/placeholder.svg"}
+                      src={event.banner || "/placeholder.svg"}
                       alt={event.title}
                       className="object-cover w-full h-full"
                     />
@@ -258,11 +215,15 @@ export default function EventsPage() {
                           event.status === "live"
                             ? "bg-red-500 hover:bg-red-600"
                             : event.status === "upcoming"
-                              ? "bg-green-500 hover:bg-green-600"
-                              : "bg-gray-500 hover:bg-gray-600"
+                            ? "bg-green-500 hover:bg-green-600"
+                            : "bg-gray-500 hover:bg-gray-600"
                         }
                       >
-                        {event.status === "live" ? "LIVE" : event.status === "upcoming" ? "Upcoming" : "Completed"}
+                        {event.status === "live"
+                          ? "LIVE"
+                          : event.status === "upcoming"
+                          ? "Upcoming"
+                          : "Completed"}
                       </Badge>
                     </div>
                   </div>
@@ -278,7 +239,7 @@ export default function EventsPage() {
                       </div>
                       <div className="flex items-center">
                         <Users className="h-4 w-4 mr-2 text-muted-foreground" />
-                        <span>{event.attendees} attendees</span>
+                        <span>{event.attendees || 0} attendees</span>
                       </div>
                       <div className="flex items-center">
                         <Badge variant="outline" className="font-normal">
@@ -314,28 +275,36 @@ export default function EventsPage() {
                   </TableHeader>
                   <TableBody>
                     {filteredEvents.map((event) => (
-                      <TableRow key={event.id}>
-                        <TableCell className="font-medium">{event.title}</TableCell>
+                      <TableRow key={event._id}>
+                        <TableCell className="font-medium">
+                          {event.title}
+                        </TableCell>
                         <TableCell>{event.date}</TableCell>
                         <TableCell>{event.location}</TableCell>
                         <TableCell>
                           <Badge variant="outline">{event.type}</Badge>
                         </TableCell>
-                        <TableCell>{event.attendees}</TableCell>
+                        <TableCell>{event.attendees || 0}</TableCell>
                         <TableCell>
                           <Badge
                             className={
                               event.status === "live"
                                 ? "bg-red-500 hover:bg-red-600"
                                 : event.status === "upcoming"
-                                  ? "bg-green-500 hover:bg-green-600"
-                                  : "bg-gray-500 hover:bg-gray-600"
+                                ? "bg-green-500 hover:bg-green-600"
+                                : "bg-gray-500 hover:bg-gray-600"
                             }
                           >
-                            {event.status === "live" ? "LIVE" : event.status === "upcoming" ? "Upcoming" : "Completed"}
+                            {event.status === "live"
+                              ? "LIVE"
+                              : event.status === "upcoming"
+                              ? "Upcoming"
+                              : "Completed"}
                           </Badge>
                         </TableCell>
-                        <TableCell>${event.sales.toLocaleString()}</TableCell>
+                        <TableCell>
+                          ${event.sales?.toLocaleString() || 0}
+                        </TableCell>
                         <TableCell className="text-right">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -373,13 +342,13 @@ export default function EventsPage() {
 
         <TabsContent value="upcoming">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {events
+            {filteredEvents
               .filter((event) => event.status === "upcoming")
               .map((event) => (
-                <Card key={event.id} className="overflow-hidden">
+                <Card key={event._id} className="overflow-hidden">
                   <div className="aspect-video relative">
                     <img
-                      src={event.image || "/placeholder.svg"}
+                      src={event.banner || "/placeholder.svg"}
                       alt={event.title}
                       className="object-cover w-full h-full"
                     />
@@ -423,7 +392,7 @@ export default function EventsPage() {
                       </div>
                       <div className="flex items-center">
                         <Users className="h-4 w-4 mr-2 text-muted-foreground" />
-                        <span>{event.attendees} attendees</span>
+                        <span>{event.attendees || 0} attendees</span>
                       </div>
                       <div className="flex items-center">
                         <Badge variant="outline" className="font-normal">
@@ -445,13 +414,13 @@ export default function EventsPage() {
 
         <TabsContent value="live">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {events
+            {filteredEvents
               .filter((event) => event.status === "live")
               .map((event) => (
-                <Card key={event.id} className="overflow-hidden">
+                <Card key={event._id} className="overflow-hidden">
                   <div className="aspect-video relative">
                     <img
-                      src={event.image || "/placeholder.svg"}
+                      src={event.banner || "/placeholder.svg"}
                       alt={event.title}
                       className="object-cover w-full h-full"
                     />
@@ -483,7 +452,9 @@ export default function EventsPage() {
                       </DropdownMenu>
                     </div>
                     <div className="absolute bottom-2 left-2">
-                      <Badge className="bg-red-500 hover:bg-red-600">LIVE</Badge>
+                      <Badge className="bg-red-500 hover:bg-red-600">
+                        LIVE
+                      </Badge>
                     </div>
                   </div>
                   <CardHeader>
@@ -498,7 +469,7 @@ export default function EventsPage() {
                       </div>
                       <div className="flex items-center">
                         <Users className="h-4 w-4 mr-2 text-muted-foreground" />
-                        <span>{event.attendees} attendees</span>
+                        <span>{event.attendees || 0} attendees</span>
                       </div>
                       <div className="flex items-center">
                         <Badge variant="outline" className="font-normal">
@@ -520,13 +491,13 @@ export default function EventsPage() {
 
         <TabsContent value="completed">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {events
+            {filteredEvents
               .filter((event) => event.status === "completed")
               .map((event) => (
-                <Card key={event.id} className="overflow-hidden">
+                <Card key={event._id} className="overflow-hidden">
                   <div className="aspect-video relative">
                     <img
-                      src={event.image || "/placeholder.svg"}
+                      src={event.banner || "/placeholder.svg"}
                       alt={event.title}
                       className="object-cover w-full h-full"
                     />
@@ -558,7 +529,9 @@ export default function EventsPage() {
                       </DropdownMenu>
                     </div>
                     <div className="absolute bottom-2 left-2">
-                      <Badge className="bg-gray-500 hover:bg-gray-600">Completed</Badge>
+                      <Badge className="bg-gray-500 hover:bg-gray-600">
+                        Completed
+                      </Badge>
                     </div>
                   </div>
                   <CardHeader>
@@ -573,7 +546,7 @@ export default function EventsPage() {
                       </div>
                       <div className="flex items-center">
                         <Users className="h-4 w-4 mr-2 text-muted-foreground" />
-                        <span>{event.attendees} attendees</span>
+                        <span>{event.attendees || 0} attendees</span>
                       </div>
                       <div className="flex items-center">
                         <Badge variant="outline" className="font-normal">
@@ -594,5 +567,5 @@ export default function EventsPage() {
         </TabsContent>
       </Tabs>
     </div>
-  )
+  );
 }

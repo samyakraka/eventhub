@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -123,6 +123,19 @@ export default function SignupPage() {
     },
   });
 
+  async function saveUserToMongo(userId: string, allData: any) {
+    try {
+      const res = await fetch("/api/saveUser", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...allData, firebaseUid: userId }),
+      });
+      return await res.json();
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
+  }
+
   function onSubmitAccountForm(values: z.infer<typeof accountFormSchema>) {
     if (values.password !== values.confirmPassword) {
       accountForm.setError("confirmPassword", {
@@ -135,7 +148,7 @@ export default function SignupPage() {
     createUserWithEmailAndPassword(auth, values.email, values.password)
       .then((userCredential) => {
         const user = userCredential.user;
-        setFormData({ ...formData, ...values });
+        setFormData({ ...formData, ...values, firebaseUid: user.uid });
         setStep(2);
         window.scrollTo(0, 0);
       })
@@ -151,8 +164,17 @@ export default function SignupPage() {
   async function handleGoogleSignIn() {
     try {
       const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
-      router.push("/dashboard");
+      const result = await signInWithPopup(auth, provider);
+      // Prompt for account type after Google sign-in
+      const accountType = window.prompt(
+        "Enter account type: 'personal' or 'organization'",
+        "personal"
+      );
+      if (accountType === "organization") {
+        router.push("/dashboard");
+      } else {
+        router.push("/dashboard/personal");
+      }
     } catch (error: any) {
       accountForm.setError("email", {
         type: "manual",
@@ -167,13 +189,20 @@ export default function SignupPage() {
     window.scrollTo(0, 0);
   }
 
-  function onSubmitPreferencesForm(
+  async function onSubmitPreferencesForm(
     values: z.infer<typeof preferencesFormSchema>
   ) {
     const completeFormData = { ...formData, ...values };
-    console.log(completeFormData);
-    // In a real app, you would register the user here
-    router.push("/dashboard");
+    // Save to MongoDB
+    if (completeFormData.firebaseUid) {
+      await saveUserToMongo(completeFormData.firebaseUid, completeFormData);
+    }
+    // Redirect based on account type
+    if (formData.accountType === "organization") {
+      router.push("/dashboard");
+    } else {
+      router.push("/dashboard/personal");
+    }
   }
 
   return (

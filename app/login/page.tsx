@@ -63,7 +63,8 @@ export default function LoginPage() {
     try {
       const provider = new GoogleAuthProvider();
       await signInWithPopup(auth, provider);
-      router.push("/dashboard");
+      // Redirect to signup page to complete registration instead of dashboard
+      router.push("/signup");
     } catch (error: any) {
       form.setError("email", {
         type: "manual",
