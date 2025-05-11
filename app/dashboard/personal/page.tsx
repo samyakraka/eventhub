@@ -1,44 +1,135 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { getAuth, onAuthStateChanged, updateProfile } from "firebase/auth";
+import { initFirebase } from "@/lib/firebase";
+import {
+  Ticket,
+  Calendar,
   CalendarDays,
   Clock,
-  Ticket,
   MapPin,
-  Users,
+  User,
+  Edit,
+  Download,
+  QrCode,
   Loader2,
-  ExternalLink,
-  Plus,
-  Calendar, // Add this import
+  Save,
+  ArrowRight,
 } from "lucide-react";
-import { getAuth, onAuthStateChanged } from "firebase/auth";
-import { initFirebase } from "@/lib/firebase";
 
-export default function PersonalDashboardPage() {
-  const [userData, setUserData] = useState({
-    upcomingEvents: [],
-    tickets: [],
-    savedEvents: [],
+// Mock data for tickets
+const mockTickets = [
+  {
+    id: "tkt-001",
+    eventId: "evt-1",
+    eventName: "Tech Conference 2025",
+    eventDate: "2025-06-15T09:00:00",
+    ticketType: "VIP",
+    purchaseDate: "2025-03-10T14:30:00",
+    price: 599,
+    status: "active",
+    qrCode: "qr-code-data-1",
+  },
+  {
+    id: "tkt-002",
+    eventId: "evt-2",
+    eventName: "Music Festival",
+    eventDate: "2025-07-22T16:00:00",
+    ticketType: "Standard",
+    purchaseDate: "2025-05-01T10:15:00",
+    price: 199,
+    status: "active",
+    qrCode: "qr-code-data-2",
+  },
+  {
+    id: "tkt-003",
+    eventId: "evt-3",
+    eventName: "Business Summit",
+    eventDate: "2025-04-10T08:30:00",
+    ticketType: "VIP",
+    purchaseDate: "2025-02-15T09:45:00",
+    price: 899,
+    status: "used",
+    qrCode: "qr-code-data-3",
+  },
+];
+
+// Mock data for registered events
+const mockRegisteredEvents = [
+  {
+    id: "evt-1",
+    name: "Tech Conference 2025",
+    date: "2025-06-15T09:00:00",
+    location: "San Francisco Convention Center",
+    status: "upcoming",
+    ticketType: "VIP",
+  },
+  {
+    id: "evt-2",
+    name: "Music Festival",
+    date: "2025-07-22T16:00:00",
+    location: "Golden Gate Park",
+    status: "upcoming",
+    ticketType: "Standard",
+  },
+  {
+    id: "evt-3",
+    name: "Business Summit",
+    date: "2025-04-10T08:30:00",
+    location: "Virtual Event",
+    status: "completed",
+    ticketType: "VIP",
+  },
+  {
+    id: "evt-4",
+    name: "Art Exhibition",
+    date: "2025-05-05T11:00:00",
+    location: "Modern Art Museum",
+    status: "completed",
+    ticketType: "Standard",
+  },
+];
+
+export default function PersonalPage() {
+  const [loading, setLoading] = useState(true);
+  const [userData, setUserData] = useState<any>(null);
+  const [profileData, setProfileData] = useState({
     displayName: "",
     email: "",
-    photoURL: "",
+    phoneNumber: "",
+    bio: "",
+    profileImage: null as string | null,
   });
-  const [loading, setLoading] = useState(true);
-  const [userId, setUserId] = useState(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const router = useRouter();
 
   // Initialize Firebase and get current user
   useEffect(() => {
@@ -47,105 +138,88 @@ export default function PersonalDashboardPage() {
 
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
-        setUserId(user.uid);
-        setUserData((prevState) => ({
-          ...prevState,
+        setUserData(user);
+        setProfileData({
           displayName: user.displayName || "",
           email: user.email || "",
-          photoURL: user.photoURL || "",
-        }));
-      } else {
-        // Handle not logged in state
+          phoneNumber: user.phoneNumber || "",
+          bio: "", // Fetch from database if available
+          profileImage: user.photoURL,
+        });
         setLoading(false);
+      } else {
+        // Redirect to login if user is not authenticated
+        router.push("/login");
       }
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [router]);
 
-  // Fetch user data when userId changes
-  useEffect(() => {
-    async function fetchUserData() {
-      if (!userId) return;
+  const handleProfileImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setProfileData({
+          ...profileData,
+          profileImage: reader.result as string,
+        });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
-      setLoading(true);
-      try {
-        // Here you would fetch actual data from your API
-        // For now, we'll use mock data
+  const handleSaveProfile = async () => {
+    setIsSaving(true);
+    try {
+      const auth = getAuth();
+      const user = auth.currentUser;
 
-        // Mock data - replace with actual API call
-        const mockUpcomingEvents = [
-          {
-            id: "evt-1",
-            title: "Tech Conference 2025",
-            date: new Date("2025-06-15T09:00:00"),
-            location: "San Francisco Convention Center",
-            ticketType: "VIP",
-            image: "/placeholder.svg",
-          },
-          {
-            id: "evt-2",
-            title: "Music Festival",
-            date: new Date("2025-07-22T16:00:00"),
-            location: "Golden Gate Park",
-            ticketType: "Standard",
-            image: "/placeholder.svg",
-          },
-        ];
+      if (user) {
+        // Update profile in Firebase Auth
+        await updateProfile(user, {
+          displayName: profileData.displayName,
+          photoURL: profileData.profileImage || user.photoURL,
+        });
 
-        const mockTickets = [
-          {
-            id: "tkt-001",
-            eventId: "evt-1",
-            eventName: "Tech Conference 2025",
-            eventDate: new Date("2025-06-15T09:00:00"),
-            ticketType: "VIP",
-            price: 599,
-          },
-          {
-            id: "tkt-002",
-            eventId: "evt-2",
-            eventName: "Music Festival",
-            eventDate: new Date("2025-07-22T16:00:00"),
-            ticketType: "Standard",
-            price: 199,
-          },
-        ];
+        // Here you would also update additional profile data in your database
+        // such as bio, phone number, etc.
 
-        const mockSavedEvents = [
-          {
-            id: "evt-3",
-            title: "Business Summit",
-            date: new Date("2025-04-10T08:30:00"),
-            location: "Virtual Event",
-            image: "/placeholder.svg",
-          },
-        ];
-
-        setUserData((prevState) => ({
-          ...prevState,
-          upcomingEvents: mockUpcomingEvents,
-          tickets: mockTickets,
-          savedEvents: mockSavedEvents,
-        }));
-
-        setLoading(false);
-      } catch (error) {
-        console.error("Error fetching personal dashboard data:", error);
-        setLoading(false);
+        setIsEditing(false);
       }
+    } catch (error) {
+      console.error("Error updating profile:", error);
+    } finally {
+      setIsSaving(false);
     }
+  };
 
-    if (userId) {
-      fetchUserData();
-    }
-  }, [userId]);
+  // Calculate upcoming and past tickets
+  const upcomingTickets = mockTickets.filter(
+    (ticket) =>
+      ticket.status === "active" && new Date(ticket.eventDate) > new Date()
+  );
+
+  const pastTickets = mockTickets.filter(
+    (ticket) =>
+      ticket.status === "used" || new Date(ticket.eventDate) < new Date()
+  );
+
+  // Calculate upcoming and past events
+  const upcomingEvents = mockRegisteredEvents.filter(
+    (event) => event.status === "upcoming" && new Date(event.date) > new Date()
+  );
+
+  const pastEvents = mockRegisteredEvents.filter(
+    (event) => event.status === "completed" || new Date(event.date) < new Date()
+  );
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
         <Loader2 className="h-8 w-8 text-primary animate-spin" />
-        <span className="ml-2">Loading your dashboard...</span>
+        <span className="ml-2">Loading your account...</span>
       </div>
     );
   }
@@ -153,255 +227,471 @@ export default function PersonalDashboardPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">
-          Personal Dashboard
-        </h1>
+        <h1 className="text-3xl font-bold tracking-tight">My Account</h1>
         <p className="text-muted-foreground">
-          Welcome back, {userData.displayName || "there"}! Here's what's
-          happening with your events.
+          Manage your tickets, events, and personal information.
         </p>
       </div>
 
-      {/* User Profile Summary */}
-      <Card>
-        <CardContent className="p-6">
-          <div className="flex flex-col md:flex-row gap-4 items-center">
-            <Avatar className="h-20 w-20">
-              <AvatarImage
-                src={userData.photoURL || "/placeholder.svg"}
-                alt="Profile"
-              />
-              <AvatarFallback>
-                {userData.displayName?.[0] || userData.email?.[0]}
-              </AvatarFallback>
-            </Avatar>
-            <div className="space-y-1 text-center md:text-left">
-              <h2 className="text-xl font-bold">
-                {userData.displayName || "User"}
-              </h2>
-              <p className="text-muted-foreground">{userData.email}</p>
-            </div>
-            <div className="md:ml-auto flex flex-col md:flex-row gap-2">
-              <Button variant="outline" asChild>
-                <Link href="/dashboard/my-account">Manage Account</Link>
-              </Button>
-              <Button variant="default" asChild>
-                <Link href="/events">Browse Events</Link>
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Tabs defaultValue="upcoming" className="space-y-4">
+      <Tabs defaultValue="tickets" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="upcoming">
-            <Calendar className="h-4 w-4 mr-2" />
-            Upcoming Events
-          </TabsTrigger>
           <TabsTrigger value="tickets">
             <Ticket className="h-4 w-4 mr-2" />
             My Tickets
           </TabsTrigger>
-          <TabsTrigger value="saved">
-            <CalendarDays className="h-4 w-4 mr-2" />
-            Saved Events
+          <TabsTrigger value="events">
+            <Calendar className="h-4 w-4 mr-2" />
+            Registered Events
+          </TabsTrigger>
+          <TabsTrigger value="profile">
+            <User className="h-4 w-4 mr-2" />
+            Profile
           </TabsTrigger>
         </TabsList>
 
-        {/* Upcoming Events Tab */}
-        <TabsContent value="upcoming">
-          {userData.upcomingEvents.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {userData.upcomingEvents.map((event) => (
-                <Card key={event.id} className="overflow-hidden">
-                  <div className="aspect-video relative">
-                    <img
-                      src={event.image || "/placeholder.svg"}
-                      alt={event.title}
-                      className="object-cover w-full h-full"
-                    />
-                    <div className="absolute bottom-2 left-2">
-                      <Badge className="bg-green-500 hover:bg-green-600">
-                        Upcoming
-                      </Badge>
-                    </div>
-                  </div>
-                  <CardHeader>
-                    <CardTitle>{event.title}</CardTitle>
-                    <CardDescription>
-                      {format(event.date, "PPP 'at' p")}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex items-center">
-                        <MapPin className="h-4 w-4 mr-2 text-muted-foreground" />
-                        <span>{event.location}</span>
-                      </div>
-                      <div className="flex items-center">
-                        <Ticket className="h-4 w-4 mr-2 text-muted-foreground" />
-                        <span>{event.ticketType}</span>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          ) : (
-            <Card>
-              <CardHeader>
-                <CardTitle>No Upcoming Events</CardTitle>
-                <CardDescription>
-                  You don't have any upcoming events. Browse events to find
-                  something interesting!
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Button asChild>
-                  <Link href="/events">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Browse Events
-                  </Link>
-                </Button>
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
-
         {/* Tickets Tab */}
         <TabsContent value="tickets">
-          {userData.tickets.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {userData.tickets.map((ticket) => (
-                <Card key={ticket.id} className="relative overflow-hidden">
-                  <CardHeader className="pb-2">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <CardTitle>{ticket.eventName}</CardTitle>
-                        <CardDescription>
-                          {format(ticket.eventDate, "PPP 'at' p")}
-                        </CardDescription>
+          <div className="space-y-4">
+            <h2 className="text-xl font-semibold">Upcoming Tickets</h2>
+            {upcomingTickets.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {upcomingTickets.map((ticket) => (
+                  <Card key={ticket.id} className="relative overflow-hidden">
+                    <CardHeader className="pb-2">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <CardTitle>{ticket.eventName}</CardTitle>
+                          <CardDescription>
+                            {format(new Date(ticket.eventDate), "PPP 'at' p")}
+                          </CardDescription>
+                        </div>
+                        <Badge>{ticket.ticketType}</Badge>
                       </div>
-                      <Badge>{ticket.ticketType}</Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="pb-2">
-                    <div className="space-y-3">
-                      <div className="flex items-center text-sm">
-                        <Clock className="h-4 w-4 mr-2 text-muted-foreground" />
-                        <span>{format(ticket.eventDate, "p")}</span>
+                    </CardHeader>
+                    <CardContent className="pb-2">
+                      <div className="space-y-3">
+                        <div className="flex items-center text-sm">
+                          <Clock className="h-4 w-4 mr-2 text-muted-foreground" />
+                          <span>{format(new Date(ticket.eventDate), "p")}</span>
+                        </div>
+                        <div className="flex items-center text-sm">
+                          <CalendarDays className="h-4 w-4 mr-2 text-muted-foreground" />
+                          <span>
+                            {format(new Date(ticket.eventDate), "PP")}
+                          </span>
+                        </div>
+                        <div className="flex items-center text-sm">
+                          <MapPin className="h-4 w-4 mr-2 text-muted-foreground" />
+                          <span>San Francisco Convention Center</span>
+                        </div>
                       </div>
-                      <div className="flex items-center text-sm">
-                        <Users className="h-4 w-4 mr-2 text-muted-foreground" />
-                        <span>${ticket.price.toFixed(2)}</span>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          ) : (
-            <Card>
-              <CardHeader>
-                <CardTitle>No Tickets</CardTitle>
-                <CardDescription>
-                  You haven't purchased any tickets yet. Browse events to buy
-                  tickets!
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Button asChild>
-                  <Link href="/events">
-                    <Plus className="h-4 w-4 mr-2" />
+                    </CardContent>
+                    <CardFooter className="flex justify-between">
+                      <Button variant="outline" size="sm">
+                        <Download className="h-4 w-4 mr-1" />
+                        Download
+                      </Button>
+                      <Button size="sm">
+                        <QrCode className="h-4 w-4 mr-1" />
+                        View QR Code
+                      </Button>
+                    </CardFooter>
+                    <div className="absolute top-0 right-0 h-full w-1 bg-primary/20"></div>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <Card>
+                <CardHeader>
+                  <CardTitle>No Upcoming Tickets</CardTitle>
+                  <CardDescription>
+                    You don't have any upcoming tickets. Browse events to
+                    purchase tickets.
+                  </CardDescription>
+                </CardHeader>
+                <CardFooter>
+                  <Button onClick={() => router.push("/events")}>
                     Browse Events
-                  </Link>
-                </Button>
-              </CardContent>
-            </Card>
-          )}
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </CardFooter>
+              </Card>
+            )}
+
+            <h2 className="text-xl font-semibold mt-8">Past Tickets</h2>
+            {pastTickets.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {pastTickets.map((ticket) => (
+                  <Card key={ticket.id} className="opacity-75">
+                    <CardHeader className="pb-2">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <CardTitle>{ticket.eventName}</CardTitle>
+                          <CardDescription>
+                            {format(new Date(ticket.eventDate), "PPP 'at' p")}
+                          </CardDescription>
+                        </div>
+                        <Badge variant="outline">{ticket.ticketType}</Badge>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        <Badge variant="secondary">Past Event</Badge>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <Card>
+                <CardHeader>
+                  <CardTitle>No Past Tickets</CardTitle>
+                  <CardDescription>
+                    You don't have any past tickets.
+                  </CardDescription>
+                </CardHeader>
+              </Card>
+            )}
+          </div>
         </TabsContent>
 
-        {/* Saved Events Tab */}
-        <TabsContent value="saved">
-          {userData.savedEvents.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {userData.savedEvents.map((event) => (
-                <Card key={event.id} className="overflow-hidden">
-                  <div className="aspect-video relative">
-                    <img
-                      src={event.image || "/placeholder.svg"}
-                      alt={event.title}
-                      className="object-cover w-full h-full"
-                    />
-                  </div>
-                  <CardHeader>
-                    <CardTitle>{event.title}</CardTitle>
-                    <CardDescription>
-                      {format(event.date, "PPP 'at' p")}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex items-center">
-                        <MapPin className="h-4 w-4 mr-2 text-muted-foreground" />
-                        <span>{event.location}</span>
-                      </div>
-                    </div>
-                  </CardContent>
-                  <div className="p-4 pt-0 flex justify-between">
-                    <Button variant="outline" size="sm">
-                      View Details
-                    </Button>
-                    <Button size="sm">Register</Button>
-                  </div>
-                </Card>
-              ))}
-            </div>
-          ) : (
-            <Card>
-              <CardHeader>
-                <CardTitle>No Saved Events</CardTitle>
-                <CardDescription>
-                  You haven't saved any events yet. Browse events and save ones
-                  you're interested in!
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Button asChild>
-                  <Link href="/events">
-                    <Plus className="h-4 w-4 mr-2" />
+        {/* Registered Events Tab */}
+        <TabsContent value="events">
+          <div className="space-y-4">
+            <h2 className="text-xl font-semibold">Upcoming Events</h2>
+            {upcomingEvents.length > 0 ? (
+              <Card>
+                <CardContent className="p-0">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Event Name</TableHead>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Location</TableHead>
+                        <TableHead>Ticket Type</TableHead>
+                        <TableHead>Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {upcomingEvents.map((event) => (
+                        <TableRow key={event.id}>
+                          <TableCell className="font-medium">
+                            {event.name}
+                          </TableCell>
+                          <TableCell>
+                            {format(new Date(event.date), "PP")}
+                          </TableCell>
+                          <TableCell>{event.location}</TableCell>
+                          <TableCell>
+                            <Badge
+                              variant={
+                                event.ticketType === "VIP"
+                                  ? "default"
+                                  : "outline"
+                              }
+                            >
+                              {event.ticketType}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() =>
+                                  router.push(`/events/${event.id}`)
+                                }
+                              >
+                                View Details
+                              </Button>
+                              <Button
+                                size="sm"
+                                onClick={() =>
+                                  router.push(`/events/${event.id}/ticket`)
+                                }
+                              >
+                                View Ticket
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            ) : (
+              <Card>
+                <CardHeader>
+                  <CardTitle>No Upcoming Events</CardTitle>
+                  <CardDescription>
+                    You haven't registered for any upcoming events yet.
+                  </CardDescription>
+                </CardHeader>
+                <CardFooter>
+                  <Button onClick={() => router.push("/events")}>
                     Browse Events
-                  </Link>
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </CardFooter>
+              </Card>
+            )}
+
+            <h2 className="text-xl font-semibold mt-8">Past Events</h2>
+            {pastEvents.length > 0 ? (
+              <Card>
+                <CardContent className="p-0">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Event Name</TableHead>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Location</TableHead>
+                        <TableHead>Ticket Type</TableHead>
+                        <TableHead>Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {pastEvents.map((event) => (
+                        <TableRow key={event.id}>
+                          <TableCell className="font-medium">
+                            {event.name}
+                          </TableCell>
+                          <TableCell>
+                            {format(new Date(event.date), "PP")}
+                          </TableCell>
+                          <TableCell>{event.location}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline">{event.ticketType}</Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => router.push(`/events/${event.id}`)}
+                            >
+                              View Event
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            ) : (
+              <Card>
+                <CardHeader>
+                  <CardTitle>No Past Events</CardTitle>
+                  <CardDescription>
+                    You haven't attended any events yet.
+                  </CardDescription>
+                </CardHeader>
+              </Card>
+            )}
+          </div>
+        </TabsContent>
+
+        {/* Profile Tab */}
+        <TabsContent value="profile">
+          <Card>
+            <CardHeader>
+              <div className="flex justify-between items-center">
+                <div>
+                  <CardTitle>Personal Information</CardTitle>
+                  <CardDescription>
+                    Manage your personal details and preferences.
+                  </CardDescription>
+                </div>
+                {!isEditing ? (
+                  <Button variant="outline" onClick={() => setIsEditing(true)}>
+                    <Edit className="h-4 w-4 mr-2" />
+                    Edit Profile
+                  </Button>
+                ) : (
+                  <Button onClick={handleSaveProfile} disabled={isSaving}>
+                    <Save className="h-4 w-4 mr-2" />
+                    {isSaving ? "Saving..." : "Save Changes"}
+                  </Button>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="flex flex-col md:flex-row gap-6">
+                <div className="flex flex-col items-center gap-4">
+                  <Avatar className="h-24 w-24">
+                    <AvatarImage
+                      src={
+                        profileData.profileImage ||
+                        "/placeholder.svg?height=96&width=96"
+                      }
+                      alt="Profile"
+                    />
+                    <AvatarFallback>
+                      {profileData.displayName.charAt(0) || "U"}
+                    </AvatarFallback>
+                  </Avatar>
+                  {isEditing && (
+                    <div className="flex flex-col items-center gap-2">
+                      <Label
+                        htmlFor="profile-image"
+                        className="cursor-pointer text-sm font-medium text-primary hover:underline"
+                      >
+                        Change Photo
+                      </Label>
+                      <Input
+                        id="profile-image"
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleProfileImageChange}
+                      />
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex-1 space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="display-name">Full Name</Label>
+                    {isEditing ? (
+                      <Input
+                        id="display-name"
+                        value={profileData.displayName}
+                        onChange={(e) =>
+                          setProfileData({
+                            ...profileData,
+                            displayName: e.target.value,
+                          })
+                        }
+                      />
+                    ) : (
+                      <div className="p-2 border rounded-md bg-muted/20">
+                        {profileData.displayName || "Not provided"}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
+                    <div className="p-2 border rounded-md bg-muted/20">
+                      {profileData.email}
+                    </div>
+                    {!isEditing && (
+                      <p className="text-xs text-muted-foreground">
+                        Email cannot be changed directly. Please contact support
+                        for email changes.
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="phone">Phone Number</Label>
+                    {isEditing ? (
+                      <Input
+                        id="phone"
+                        value={profileData.phoneNumber}
+                        onChange={(e) =>
+                          setProfileData({
+                            ...profileData,
+                            phoneNumber: e.target.value,
+                          })
+                        }
+                      />
+                    ) : (
+                      <div className="p-2 border rounded-md bg-muted/20">
+                        {profileData.phoneNumber || "Not provided"}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="bio">Bio</Label>
+                    {isEditing ? (
+                      <Textarea
+                        id="bio"
+                        placeholder="Tell us about yourself"
+                        value={profileData.bio}
+                        onChange={(e) =>
+                          setProfileData({
+                            ...profileData,
+                            bio: e.target.value,
+                          })
+                        }
+                        className="min-h-32"
+                      />
+                    ) : (
+                      <div className="p-2 border rounded-md bg-muted/20 min-h-32">
+                        {profileData.bio || "No bio provided"}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <Separator />
+
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium">Account Information</h3>
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center p-2 border rounded-md">
+                    <div>
+                      <p className="font-medium">Account Created</p>
+                      <p className="text-sm text-muted-foreground">
+                        {userData.metadata.creationTime
+                          ? format(
+                              new Date(userData.metadata.creationTime),
+                              "MMMM d, yyyy"
+                            )
+                          : "Unknown"}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex justify-between items-center p-2 border rounded-md">
+                    <div>
+                      <p className="font-medium">Last Sign In</p>
+                      <p className="text-sm text-muted-foreground">
+                        {userData.metadata.lastSignInTime
+                          ? format(
+                              new Date(userData.metadata.lastSignInTime),
+                              "MMMM d, yyyy 'at' h:mm a"
+                            )
+                          : "Unknown"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <Separator />
+
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium">
+                  Notification Preferences
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Button variant="outline" className="justify-start">
+                    Manage Email Notifications
+                  </Button>
+                  <Button variant="outline" className="justify-start">
+                    Manage Push Notifications
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+            {isEditing && (
+              <CardFooter className="flex justify-between">
+                <Button variant="outline" onClick={() => setIsEditing(false)}>
+                  Cancel
                 </Button>
-              </CardContent>
-            </Card>
-          )}
+                <Button onClick={handleSaveProfile} disabled={isSaving}>
+                  <Save className="h-4 w-4 mr-2" />
+                  {isSaving ? "Saving..." : "Save Changes"}
+                </Button>
+              </CardFooter>
+            )}
+          </Card>
         </TabsContent>
       </Tabs>
-
-      {/* Recommendations Section */}
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight mb-4">
-          Recommended For You
-        </h2>
-        <Card>
-          <CardContent className="p-6">
-            <div className="text-center py-8">
-              <p className="text-muted-foreground mb-4">
-                We'll display personalized event recommendations here based on
-                your interests and past attendance.
-              </p>
-              <Button asChild>
-                <Link href="/events">
-                  <ExternalLink className="h-4 w-4 mr-2" />
-                  Explore Event Categories
-                </Link>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
     </div>
   );
 }

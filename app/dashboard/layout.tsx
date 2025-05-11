@@ -6,17 +6,10 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   Calendar,
-  CheckSquare,
   Home,
-  LayoutDashboard,
   LogOut,
-  PlusCircle,
   Settings,
-  Users,
-  Video,
   Ticket,
-  CalendarDays,
-  BookmarkIcon,
   UserCog,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -43,7 +36,6 @@ export default function DashboardLayout({
 }) {
   const pathname = usePathname();
   const [user, setUser] = useState<User | null>(null);
-  const [accountType, setAccountType] = useState<string>("organization"); // Default to organization
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
@@ -51,31 +43,6 @@ export default function DashboardLayout({
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         setUser(firebaseUser);
-
-        // Fetch the user's account type from your database
-        try {
-          const response = await fetch(`/api/users/${firebaseUser.uid}`);
-          const userData = await response.json();
-
-          const userAccountType = userData?.accountType || "organization";
-          setAccountType(userAccountType);
-
-          // If user is on the wrong dashboard, redirect them
-          const isOnPersonalPath = pathname.includes("/personal");
-
-          if (
-            userAccountType === "personal" &&
-            !isOnPersonalPath &&
-            pathname === "/dashboard"
-          ) {
-            router.push("/dashboard/personal");
-          } else if (userAccountType === "organization" && isOnPersonalPath) {
-            router.push("/dashboard");
-          }
-        } catch (error) {
-          setAccountType("organization");
-        }
-
         setLoading(false);
       } else {
         setLoading(false);
@@ -86,72 +53,24 @@ export default function DashboardLayout({
     return () => unsubscribe();
   }, [pathname, router]);
 
-  // Menu items for organizational accounts
-  const organizationMenuItems = [
+  // Only show these menu items for all users
+  const menuItems = [
     {
-      title: "Dashboard",
+      title: "My Tickets",
       href: "/dashboard",
-      icon: LayoutDashboard,
+      icon: Ticket,
     },
     {
-      title: "My Events",
+      title: "Registered Events",
       href: "/dashboard/events",
       icon: Calendar,
     },
     {
-      title: "Create Event",
-      href: "/dashboard/create",
-      icon: PlusCircle,
-    },
-    {
-      title: "Check-In",
-      href: "/dashboard/check-in",
-      icon: CheckSquare,
-    },
-    {
-      title: "Broadcasts",
-      href: "/dashboard/broadcasts",
-      icon: Video,
-    },
-    {
-      title: "Attendees",
-      href: "/dashboard/attendees",
-      icon: Users,
-    },
-    {
-      title: "Settings",
-      href: "/dashboard/settings",
-      icon: Settings,
-    },
-  ];
-
-  // Menu items for personal accounts
-  const personalMenuItems = [
-    {
-      title: "Upcoming Events",
-      href: "/dashboard/personal",
-      icon: CalendarDays,
-    },
-    {
-      title: "My Tickets",
-      href: "/dashboard/personal/tickets",
-      icon: Ticket,
-    },
-    {
-      title: "Saved Events",
-      href: "/dashboard/personal/saved",
-      icon: BookmarkIcon,
-    },
-    {
-      title: "Manage Account",
+      title: "Profile",
       href: "/dashboard/my-account",
       icon: UserCog,
     },
   ];
-
-  // Select the appropriate menu items based on account type
-  const menuItems =
-    accountType === "personal" ? personalMenuItems : organizationMenuItems;
 
   // Add logout handler
   const handleLogout = async () => {
@@ -178,11 +97,6 @@ export default function DashboardLayout({
               </div>
               EventsHub
             </div>
-            {accountType === "personal" && (
-              <div className="text-xs text-muted-foreground">
-                Personal Account
-              </div>
-            )}
           </SidebarHeader>
           <SidebarContent>
             <SidebarMenu>

@@ -1,31 +1,71 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { format } from "date-fns";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
+  CardFooter,
 } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CalendarDays, Clock, Users, DollarSign, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  Clock,
+  CalendarDays,
+  MapPin,
+  Loader2,
+  Download,
+  QrCode,
+  ArrowRight,
+} from "lucide-react";
 import { getAuth, onAuthStateChanged } from "firebase/auth";
-import { initFirebase } from "@/lib/firebase"; // Adjust the import path as needed
+import { initFirebase } from "@/lib/firebase";
+import { useRouter } from "next/navigation";
+
+const mockTickets = [
+  {
+    id: "tkt-001",
+    eventId: "evt-1",
+    eventName: "Tech Conference 2025",
+    eventDate: "2025-06-15T09:00:00",
+    ticketType: "VIP",
+    purchaseDate: "2025-03-10T14:30:00",
+    price: 599,
+    status: "active",
+    qrCode: "qr-code-data-1",
+  },
+  {
+    id: "tkt-002",
+    eventId: "evt-2",
+    eventName: "Music Festival",
+    eventDate: "2025-07-22T16:00:00",
+    ticketType: "Standard",
+    purchaseDate: "2025-05-01T10:15:00",
+    price: 199,
+    status: "active",
+    qrCode: "qr-code-data-2",
+  },
+  {
+    id: "tkt-003",
+    eventId: "evt-3",
+    eventName: "Business Summit",
+    eventDate: "2025-04-10T08:30:00",
+    ticketType: "VIP",
+    purchaseDate: "2025-02-15T09:45:00",
+    price: 899,
+    status: "used",
+    qrCode: "qr-code-data-3",
+  },
+];
 
 export default function DashboardPage() {
-  const [userData, setUserData] = useState({
-    totalEvents: 0,
-    upcomingEvents: 0,
-    totalAttendees: 0,
-    revenue: 0,
-    nextEventDays: 0,
-    events: [],
-  });
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState(null);
+  const router = useRouter();
 
-  // Initialize Firebase and get current user
   useEffect(() => {
     const app = initFirebase();
     const auth = getAuth(app);
@@ -34,56 +74,30 @@ export default function DashboardPage() {
       if (user) {
         setUserId(user.uid);
       } else {
-        // Handle not logged in state
         setLoading(false);
       }
+      setLoading(false);
     });
 
     return () => unsubscribe();
   }, []);
 
-  // Fetch user data when userId changes
-  useEffect(() => {
-    async function fetchUserDashboard() {
-      if (!userId) return;
+  // Calculate upcoming and past tickets
+  const upcomingTickets = mockTickets.filter(
+    (ticket) =>
+      ticket.status === "active" && new Date(ticket.eventDate) > new Date()
+  );
 
-      setLoading(true);
-      try {
-        // Fetch dashboard data
-        const response = await fetch(`/api/dashboard?userId=${userId}`);
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch dashboard data");
-        }
-
-        const data = await response.json();
-
-        setUserData({
-          totalEvents: data.totalEvents || 0,
-          upcomingEvents: data.upcomingEvents || 0,
-          totalAttendees: data.totalAttendees || 0,
-          revenue: data.revenue || 0,
-          nextEventDays: data.nextEventDays || 0,
-          events: data.events || [],
-        });
-      } catch (error) {
-        console.error("Error fetching dashboard data:", error);
-        // You could set an error state here
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    if (userId) {
-      fetchUserDashboard();
-    }
-  }, [userId]);
+  const pastTickets = mockTickets.filter(
+    (ticket) =>
+      ticket.status === "used" || new Date(ticket.eventDate) < new Date()
+  );
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
         <Loader2 className="h-8 w-8 text-primary animate-spin" />
-        <span className="ml-2">Loading your dashboard...</span>
+        <span className="ml-2">Loading your tickets...</span>
       </div>
     );
   }
@@ -91,210 +105,112 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+        <h1 className="text-3xl font-bold tracking-tight">My Tickets</h1>
         <p className="text-muted-foreground">
-          Overview of your events and performance.
+          Manage your event tickets.
         </p>
       </div>
+      <div className="space-y-4">
+        <h2 className="text-xl font-semibold">Upcoming Tickets</h2>
+        {upcomingTickets.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {upcomingTickets.map((ticket) => (
+              <Card key={ticket.id} className="relative overflow-hidden">
+                <CardHeader className="pb-2">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <CardTitle>{ticket.eventName}</CardTitle>
+                      <CardDescription>
+                        {format(new Date(ticket.eventDate), "PPP 'at' p")}
+                      </CardDescription>
+                    </div>
+                    <Badge>{ticket.ticketType}</Badge>
+                  </div>
+                </CardHeader>
+                <CardContent className="pb-2">
+                  <div className="space-y-3">
+                    <div className="flex items-center text-sm">
+                      <Clock className="h-4 w-4 mr-2 text-muted-foreground" />
+                      <span>{format(new Date(ticket.eventDate), "p")}</span>
+                    </div>
+                    <div className="flex items-center text-sm">
+                      <CalendarDays className="h-4 w-4 mr-2 text-muted-foreground" />
+                      <span>
+                        {format(new Date(ticket.eventDate), "PP")}
+                      </span>
+                    </div>
+                    <div className="flex items-center text-sm">
+                      <MapPin className="h-4 w-4 mr-2 text-muted-foreground" />
+                      <span>San Francisco Convention Center</span>
+                    </div>
+                  </div>
+                </CardContent>
+                <CardFooter className="flex justify-between">
+                  <Button variant="outline" size="sm">
+                    <Download className="h-4 w-4 mr-1" />
+                    Download
+                  </Button>
+                  <Button size="sm">
+                    <QrCode className="h-4 w-4 mr-1" />
+                    View QR Code
+                  </Button>
+                </CardFooter>
+                <div className="absolute top-0 right-0 h-full w-1 bg-primary/20"></div>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <Card>
+            <CardHeader>
+              <CardTitle>No Upcoming Tickets</CardTitle>
+              <CardDescription>
+                You don't have any upcoming tickets. Browse events to purchase tickets.
+              </CardDescription>
+            </CardHeader>
+            <CardFooter>
+              <Button onClick={() => router.push("/events")}>
+                Browse Events
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </CardFooter>
+          </Card>
+        )}
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Events</CardTitle>
-            <CalendarDays className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{userData.totalEvents}</div>
-            <p className="text-xs text-muted-foreground">
-              {userData.totalEvents > 0
-                ? `${userData.upcomingEvents} upcoming events`
-                : "Create your first event"}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Upcoming Events
-            </CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{userData.upcomingEvents}</div>
-            <p className="text-xs text-muted-foreground">
-              {userData.upcomingEvents > 0
-                ? `Next event in ${userData.nextEventDays} days`
-                : "No upcoming events"}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Total Attendees
-            </CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{userData.totalAttendees}</div>
-            <p className="text-xs text-muted-foreground">
-              {userData.totalAttendees > 0
-                ? `Across ${userData.totalEvents} events`
-                : "No attendees yet"}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Revenue</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              ${userData.revenue.toLocaleString()}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {userData.revenue > 0
-                ? `From ticket sales & registrations`
-                : "No revenue yet"}
-            </p>
-          </CardContent>
-        </Card>
+        <h2 className="text-xl font-semibold mt-8">Past Tickets</h2>
+        {pastTickets.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {pastTickets.map((ticket) => (
+              <Card key={ticket.id} className="opacity-75">
+                <CardHeader className="pb-2">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <CardTitle>{ticket.eventName}</CardTitle>
+                      <CardDescription>
+                        {format(new Date(ticket.eventDate), "PPP 'at' p")}
+                      </CardDescription>
+                    </div>
+                    <Badge variant="outline">{ticket.ticketType}</Badge>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    <Badge variant="secondary">Past Event</Badge>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <Card>
+            <CardHeader>
+              <CardTitle>No Past Tickets</CardTitle>
+              <CardDescription>
+                You don't have any past tickets.
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        )}
       </div>
-
-      <Tabs defaultValue="upcoming">
-        <TabsList>
-          <TabsTrigger value="upcoming">Upcoming Events</TabsTrigger>
-          <TabsTrigger value="live">Live Now</TabsTrigger>
-          <TabsTrigger value="past">Past Events</TabsTrigger>
-        </TabsList>
-        <TabsContent value="upcoming" className="space-y-4">
-          {userData.events.filter((event) => event.status === "upcoming")
-            .length > 0 ? (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {userData.events
-                .filter((event) => event.status === "upcoming")
-                .map((event, i) => (
-                  <Card key={event.id || i}>
-                    <CardHeader>
-                      <CardTitle>{event.title}</CardTitle>
-                      <CardDescription>{event.date}</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="flex justify-between items-center">
-                        <div className="flex items-center gap-2">
-                          <span className="inline-flex h-6 items-center rounded-full bg-primary/10 px-2 text-xs font-medium text-primary">
-                            {event.type}
-                          </span>
-                          <span className="flex items-center gap-1 text-sm text-muted-foreground">
-                            <Users className="h-3 w-3" /> {event.attendees || 0}
-                          </span>
-                        </div>
-                        <div className="text-sm font-medium text-primary">
-                          Manage
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-            </div>
-          ) : (
-            <Card>
-              <CardHeader>
-                <CardTitle>No Upcoming Events</CardTitle>
-                <CardDescription>
-                  You don't have any upcoming events scheduled.
-                </CardDescription>
-              </CardHeader>
-            </Card>
-          )}
-        </TabsContent>
-        <TabsContent value="live">
-          {userData.events.filter((event) => event.status === "live").length >
-          0 ? (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {userData.events
-                .filter((event) => event.status === "live")
-                .map((event, i) => (
-                  <Card key={event.id || i}>
-                    <CardHeader>
-                      <CardTitle>{event.title}</CardTitle>
-                      <CardDescription>Live now</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="flex justify-between items-center">
-                        <div className="flex items-center gap-2">
-                          <div className="flex items-center gap-1">
-                            <div className="h-2 w-2 rounded-full bg-red-500"></div>
-                            <span className="text-xs font-medium">LIVE</span>
-                          </div>
-                          <span className="flex items-center gap-1 text-sm text-muted-foreground">
-                            <Users className="h-3 w-3" /> {event.watching || 0}{" "}
-                            watching
-                          </span>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-            </div>
-          ) : (
-            <Card>
-              <CardHeader>
-                <CardTitle>No Live Events</CardTitle>
-                <CardDescription>
-                  You don't have any events that are currently live.
-                </CardDescription>
-              </CardHeader>
-            </Card>
-          )}
-        </TabsContent>
-        <TabsContent value="past">
-          {userData.events.filter((event) => event.status === "completed")
-            .length > 0 ? (
-            <Card>
-              <CardHeader>
-                <CardTitle>Past Events</CardTitle>
-                <CardDescription>
-                  You have{" "}
-                  {
-                    userData.events.filter(
-                      (event) => event.status === "completed"
-                    ).length
-                  }{" "}
-                  completed events.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {userData.events
-                    .filter((event) => event.status === "completed")
-                    .map((event, i) => (
-                      <div
-                        key={event.id || i}
-                        className="flex items-center justify-between rounded-lg border p-3"
-                      >
-                        <div className="font-medium">{event.title}</div>
-                        <div className="text-sm text-muted-foreground">
-                          {event.date}
-                        </div>
-                      </div>
-                    ))}
-                </div>
-              </CardContent>
-            </Card>
-          ) : (
-            <Card>
-              <CardHeader>
-                <CardTitle>No Past Events</CardTitle>
-                <CardDescription>
-                  You don't have any completed events yet.
-                </CardDescription>
-              </CardHeader>
-            </Card>
-          )}
-        </TabsContent>
-      </Tabs>
     </div>
   );
 }
