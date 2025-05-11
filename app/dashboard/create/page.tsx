@@ -1,7 +1,6 @@
 "use client";
 
-import type React from "react";
-
+import React from "react";
 import { useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -43,6 +42,8 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
+import { auth } from "@/firebase/firebaseConfig";
+import { onAuthStateChanged, User } from "firebase/auth";
 
 const formSchema = z.object({
   title: z.string().min(2, {
@@ -71,6 +72,17 @@ export default function CreateEventPage() {
   const [previewBanner, setPreviewBanner] = useState<string | null>(null);
   const [primaryColor, setPrimaryColor] = useState("#3b82f6");
   const [eventData, setEventData] = useState<any>(null);
+  const [firebaseUser, setFirebaseUser] = useState<User | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
+
+  // Listen for Firebase auth user
+  React.useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setFirebaseUser(user);
+      setUserId(user?.uid || null);
+    });
+    return () => unsubscribe();
+  }, []);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -119,6 +131,7 @@ export default function CreateEventPage() {
       banner: previewBanner,
       primaryColor,
       createdAt: new Date().toISOString(),
+      userId, // Store Firebase user id with event
     };
     setEventData(payload);
     try {

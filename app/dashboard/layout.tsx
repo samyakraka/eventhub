@@ -3,7 +3,7 @@
 import type React from "react";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation"; // add useRouter import
+import { usePathname, useRouter } from "next/navigation";
 import {
   Calendar,
   CheckSquare,
@@ -14,6 +14,10 @@ import {
   Settings,
   Users,
   Video,
+  Ticket,
+  CalendarDays,
+  BookmarkIcon,
+  UserCog,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -39,16 +43,51 @@ export default function DashboardLayout({
 }) {
   const pathname = usePathname();
   const [user, setUser] = useState<User | null>(null);
-  const router = useRouter(); // add this line
+  const [accountType, setAccountType] = useState<string>("organization"); // Default to organization
+  const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-      setUser(firebaseUser);
-    });
-    return () => unsubscribe();
-  }, []);
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        setUser(firebaseUser);
 
-  const menuItems = [
+        // Fetch the user's account type from your database
+        try {
+          const response = await fetch(`/api/users/${firebaseUser.uid}`);
+          const userData = await response.json();
+
+          const userAccountType = userData?.accountType || "organization";
+          setAccountType(userAccountType);
+
+          // If user is on the wrong dashboard, redirect them
+          const isOnPersonalPath = pathname.includes("/personal");
+
+          if (
+            userAccountType === "personal" &&
+            !isOnPersonalPath &&
+            pathname === "/dashboard"
+          ) {
+            router.push("/dashboard/personal");
+          } else if (userAccountType === "organization" && isOnPersonalPath) {
+            router.push("/dashboard");
+          }
+        } catch (error) {
+          setAccountType("organization");
+        }
+
+        setLoading(false);
+      } else {
+        setLoading(false);
+        router.push("/login");
+      }
+    });
+
+    return () => unsubscribe();
+  }, [pathname, router]);
+
+  // Menu items for organizational accounts
+  const organizationMenuItems = [
     {
       title: "Dashboard",
       href: "/dashboard",
@@ -86,11 +125,47 @@ export default function DashboardLayout({
     },
   ];
 
+  // Menu items for personal accounts
+  const personalMenuItems = [
+    {
+      title: "Upcoming Events",
+      href: "/dashboard/personal",
+      icon: CalendarDays,
+    },
+    {
+      title: "My Tickets",
+      href: "/dashboard/personal/tickets",
+      icon: Ticket,
+    },
+    {
+      title: "Saved Events",
+      href: "/dashboard/personal/saved",
+      icon: BookmarkIcon,
+    },
+    {
+      title: "Manage Account",
+      href: "/dashboard/my-account",
+      icon: UserCog,
+    },
+  ];
+
+  // Select the appropriate menu items based on account type
+  const menuItems =
+    accountType === "personal" ? personalMenuItems : organizationMenuItems;
+
   // Add logout handler
   const handleLogout = async () => {
     await signOut(auth);
     router.push("/login");
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        Loading...
+      </div>
+    );
+  }
 
   return (
     <SidebarProvider>
@@ -103,6 +178,11 @@ export default function DashboardLayout({
               </div>
               EventsHub
             </div>
+            {accountType === "personal" && (
+              <div className="text-xs text-muted-foreground">
+                Personal Account
+              </div>
+            )}
           </SidebarHeader>
           <SidebarContent>
             <SidebarMenu>
@@ -128,7 +208,7 @@ export default function DashboardLayout({
                 variant="outline"
                 size="sm"
                 className="w-full justify-start gap-2"
-                onClick={handleLogout} // change to use handler
+                onClick={handleLogout}
               >
                 <LogOut className="h-4 w-4" />
                 <span>Log out</span>

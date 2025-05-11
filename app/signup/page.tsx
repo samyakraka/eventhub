@@ -165,15 +165,25 @@ export default function SignupPage() {
     try {
       const provider = new GoogleAuthProvider();
       const result = await signInWithPopup(auth, provider);
-      // Prompt for account type after Google sign-in
-      const accountType = window.prompt(
-        "Enter account type: 'personal' or 'organization'",
-        "personal"
-      );
-      if (accountType === "organization") {
-        router.push("/dashboard");
-      } else {
-        router.push("/dashboard/personal");
+
+      // Fetch account type from MongoDB
+      try {
+        const response = await fetch(`/api/users/${result.user.uid}`);
+        const userData = await response.json();
+
+        if (userData && userData.accountType === "personal") {
+          router.push("/dashboard/personal");
+        } else if (userData && userData.accountType === "organization") {
+          router.push("/dashboard");
+        } else {
+          // New user, continue signup flow or ask for account type
+          setFormData({ ...formData, firebaseUid: result.user.uid });
+          setStep(2);
+        }
+      } catch (error) {
+        // New user, continue signup flow
+        setFormData({ ...formData, firebaseUid: result.user.uid });
+        setStep(2);
       }
     } catch (error: any) {
       accountForm.setError("email", {

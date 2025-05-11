@@ -62,9 +62,24 @@ export default function LoginPage() {
   async function handleGoogleSignIn() {
     try {
       const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
-      // Redirect to signup page to complete registration instead of dashboard
-      router.push("/signup");
+      const result = await signInWithPopup(auth, provider);
+
+      // Fetch account type from MongoDB
+      try {
+        const response = await fetch(`/api/users/${result.user.uid}`);
+        const userData = await response.json();
+
+        if (userData && userData.accountType === "personal") {
+          router.push("/dashboard/personal");
+        } else if (userData && userData.accountType === "organization") {
+          router.push("/dashboard");
+        } else {
+          // New user or missing accountType, redirect to signup
+          router.push("/signup");
+        }
+      } catch (error) {
+        router.push("/signup");
+      }
     } catch (error: any) {
       form.setError("email", {
         type: "manual",
@@ -75,10 +90,23 @@ export default function LoginPage() {
 
   function onSubmit(values: z.infer<typeof formSchema>) {
     signInWithEmailAndPassword(auth, values.email, values.password)
-      .then((userCredential) => {
+      .then(async (userCredential) => {
         const user = userCredential.user;
-        console.log("Logged in user:", user);
-        router.push("/dashboard");
+        // Fetch the user's account type from your database
+        try {
+          const response = await fetch(`/api/users/${user.uid}`);
+          const userData = await response.json();
+
+          if (userData && userData.accountType === "personal") {
+            router.push("/dashboard/personal");
+          } else if (userData && userData.accountType === "organization") {
+            router.push("/dashboard");
+          } else {
+            router.push("/signup");
+          }
+        } catch (error) {
+          router.push("/dashboard");
+        }
       })
       .catch((error) => {
         form.setError("email", {

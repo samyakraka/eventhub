@@ -12,6 +12,7 @@ export function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [user, setUser] = useState<User | null>(null);
+  const [accountType, setAccountType] = useState<string>("organization");
 
   useEffect(() => {
     const handleScroll = () => {
@@ -27,6 +28,29 @@ export function Navbar() {
     });
     return () => unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (user) {
+      const fetchAccountType = async () => {
+        try {
+          const response = await fetch(`/api/users/${user.uid}`);
+          const userData = await response.json();
+          if (userData && userData.accountType) {
+            setAccountType(userData.accountType);
+          }
+        } catch (error) {
+          console.error("Error fetching user account type:", error);
+        }
+      };
+
+      fetchAccountType();
+    }
+  }, [user]);
+
+  const getDashboardPath = () => {
+    if (!user) return "/login";
+    return accountType === "personal" ? "/dashboard/personal" : "/dashboard";
+  };
 
   return (
     <header
@@ -73,7 +97,7 @@ export function Navbar() {
         <div className="hidden md:flex items-center gap-4">
           {user ? (
             <>
-              <Link href="/dashboard">
+              <Link href={getDashboardPath()}>
                 <Button variant="ghost" size="sm">
                   Dashboard
                 </Button>
@@ -164,7 +188,10 @@ export function Navbar() {
             <div className="flex flex-col gap-2 pt-2 border-t">
               {user ? (
                 <>
-                  <Link href="/dashboard" onClick={() => setIsMenuOpen(false)}>
+                  <Link
+                    href={getDashboardPath()}
+                    onClick={() => setIsMenuOpen(false)}
+                  >
                     <Button variant="outline" className="w-full">
                       Dashboard
                     </Button>
