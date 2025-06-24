@@ -32,12 +32,15 @@ import {
   X,
   Filter,
   User,
+  Copy,
 } from "lucide-react";
 import { format } from "date-fns";
 import { EventRegistrationDialog } from "./EventRegistrationDialog";
 import { VirtualEventPage } from "../events/VirtualEventPage";
 import { MyTicketsDialog } from "./MyTicketsDialog";
 import { UserProfileDialog } from "./UserProfileDialog";
+import { toast } from "@/hooks/use-toast";
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
 
 export function AttendeeDashboard() {
   const { user, logout } = useAuth();
@@ -58,6 +61,10 @@ export function AttendeeDashboard() {
   useEffect(() => {
     fetchEvents();
     fetchMyTickets();
+    // Listen for custom event to open My Tickets modal
+    const handler = () => setShowMyTickets(true);
+    window.addEventListener("openMyTickets", handler);
+    return () => window.removeEventListener("openMyTickets", handler);
   }, [user]);
 
   const fetchEvents = async () => {
@@ -135,9 +142,9 @@ export function AttendeeDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-b from-[#101624] via-[#181F36] to-[#181F36]">
       {/* Enhanced Header */}
-      <header className="bg-white shadow-sm border-b sticky top-0 z-40">
+      <header className="bg-[#181F36] shadow-sm border-b border-[#232A45] sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center space-x-3">
@@ -145,32 +152,29 @@ export function AttendeeDashboard() {
                 <Calendar className="w-5 h-5 text-white" />
               </div>
               <div>
-                <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
-                  EventHub
-                </h1>
-                <p className="text-sm text-gray-600 hidden sm:block">
+                <h1 className="text-2xl font-bold text-white">EventHub</h1>
+                <p className="text-sm text-gray-400 hidden sm:block">
                   Welcome back, {user?.displayName}
                 </p>
               </div>
             </div>
-
             {/* Desktop Actions */}
             <div className="hidden md:flex items-center space-x-3">
               <Button
                 variant="outline"
                 onClick={() => setShowMyTickets(true)}
-                className="flex items-center space-x-2"
+                className="flex items-center space-x-2 bg-[#232A45] border-[#2D365A] text-white hover:bg-gradient-to-r hover:from-blue-700 hover:to-purple-700 hover:text-white"
               >
                 <TicketIcon className="w-4 h-4" />
                 <span>My Tickets</span>
-                <Badge variant="secondary" className="ml-1">
+                <Badge variant="secondary" className="ml-1 bg-blue-700 text-white">
                   {myTickets.length}
                 </Badge>
               </Button>
               <Button
                 variant="outline"
                 onClick={() => setShowUserProfile(true)}
-                className="flex items-center space-x-2"
+                className="flex items-center space-x-2 bg-[#232A45] border-[#2D365A] text-white hover:bg-gradient-to-r hover:from-blue-700 hover:to-purple-700 hover:text-white"
               >
                 <User className="w-4 h-4" />
                 <span>Profile</span>
@@ -178,20 +182,19 @@ export function AttendeeDashboard() {
               <Button
                 variant="outline"
                 onClick={logout}
-                className="flex items-center space-x-2"
+                className="flex items-center space-x-2 bg-[#232A45] border-[#2D365A] text-white hover:bg-gradient-to-r hover:from-blue-700 hover:to-purple-700 hover:text-white"
               >
                 <User className="w-4 h-4" />
                 <span>Sign Out</span>
               </Button>
             </div>
-
             {/* Mobile Menu Button */}
             <div className="md:hidden">
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setShowMobileMenu(!showMobileMenu)}
-                className="p-2"
+                className="p-2 text-white"
               >
                 {showMobileMenu ? (
                   <X className="w-6 h-6" />
@@ -201,23 +204,22 @@ export function AttendeeDashboard() {
               </Button>
             </div>
           </div>
-
           {/* Mobile Menu */}
           {showMobileMenu && (
-            <div className="md:hidden border-t border-gray-200 py-4 space-y-3">
+            <div className="md:hidden border-t border-[#232A45] py-4 space-y-3 bg-[#181F36]">
               <Button
                 variant="ghost"
                 onClick={() => {
                   setShowMyTickets(true);
                   setShowMobileMenu(false);
                 }}
-                className="w-full justify-between"
+                className="w-full justify-between text-white"
               >
                 <div className="flex items-center space-x-2">
                   <TicketIcon className="w-4 h-4" />
                   <span>My Tickets</span>
                 </div>
-                <Badge variant="secondary">{myTickets.length}</Badge>
+                <Badge variant="secondary" className="bg-blue-700 text-white">{myTickets.length}</Badge>
               </Button>
               <Button
                 variant="ghost"
@@ -225,7 +227,7 @@ export function AttendeeDashboard() {
                   setShowUserProfile(true);
                   setShowMobileMenu(false);
                 }}
-                className="w-full justify-start"
+                className="w-full justify-start text-white"
               >
                 <User className="w-4 h-4 mr-2" />
                 Profile Settings
@@ -236,7 +238,7 @@ export function AttendeeDashboard() {
                   logout();
                   setShowMobileMenu(false);
                 }}
-                className="w-full justify-start"
+                className="w-full justify-start text-white"
               >
                 <User className="w-4 h-4 mr-2" />
                 Sign Out
@@ -245,7 +247,6 @@ export function AttendeeDashboard() {
           )}
         </div>
       </header>
-
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         {/* Live Events Section */}
         {events.filter((e) => e.status === "live" && e.isVirtual).length >
@@ -294,16 +295,16 @@ export function AttendeeDashboard() {
 
         {/* My Tickets Section */}
         {myTickets.length > 0 && (
-          <Card className="mb-6 sm:mb-8">
+          <Card className="mb-6 sm:mb-8 bg-gradient-to-br from-[#232A45] via-[#232A45]/80 to-[#181F36] border-none shadow-lg rounded-2xl">
             <CardHeader className="pb-4">
-              <CardTitle className="flex items-center text-lg sm:text-xl">
-                <TicketIcon className="w-5 h-5 mr-2" />
+              <CardTitle className="flex items-center text-xl text-white">
+                <TicketIcon className="w-5 h-5 mr-2 text-blue-400" />
                 My Tickets
-                <Badge variant="secondary" className="ml-2">
+                <Badge variant="secondary" className="ml-2 bg-blue-700 text-white">
                   {myTickets.length}
                 </Badge>
               </CardTitle>
-              <CardDescription>Your registered events</CardDescription>
+              <CardDescription className="text-gray-300">Your registered events</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -312,13 +313,29 @@ export function AttendeeDashboard() {
                     (e) => e.id === ticket.eventId
                   );
 
+                  // Copy to clipboard handler
+                  const copyToClipboard = (text: string, label: string) => {
+                    navigator.clipboard.writeText(text).then(() => {
+                      toast({
+                        title: "Copied!",
+                        description: `${label} copied to clipboard`,
+                      });
+                    });
+                  };
+
                   return (
                     <div
                       key={ticket.id}
-                      className="border rounded-lg p-4 bg-blue-50 hover:bg-blue-100 transition-colors"
+                      className="border-none rounded-xl p-4 bg-[#22305A]/80 hover:bg-gradient-to-br hover:from-blue-900 hover:to-purple-900 transition-colors shadow-md text-white"
                     >
+                      {/* Event Name Heading */}
+                      {ticketEvent && (
+                        <h3 className="font-semibold text-base text-blue-300 mb-1 line-clamp-1">
+                          {ticketEvent.title}
+                        </h3>
+                      )}
                       <div className="flex items-center justify-between mb-2">
-                        <Badge variant="secondary" className="text-xs">
+                        <Badge variant="secondary" className="text-xs bg-green-700/80 text-white">
                           Registered
                         </Badge>
                         {ticket.checkedIn && (
@@ -327,25 +344,60 @@ export function AttendeeDashboard() {
                           </Badge>
                         )}
                       </div>
-                      <p className="font-medium text-sm mb-1">
-                        Ticket ID: {ticket.id.slice(0, 8)}...
-                      </p>
-                      <p className="text-xs text-gray-600 mb-3">
-                        QR: {ticket.qrCode.slice(0, 12)}...
-                      </p>
-
+                      {/* Ticket ID with copy and tooltip */}
+                      <div className="flex items-center mb-1 gap-2">
+                        <span className="text-xs font-medium text-blue-200 min-w-[70px]">Ticket ID:</span>
+                        <span className="text-xs font-mono text-blue-100 break-all">{ticket.id.slice(0, 12)}...</span>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="ml-1 text-blue-200 hover:text-white"
+                                onClick={() => copyToClipboard(ticket.id, 'Ticket ID')}
+                                tabIndex={0}
+                                aria-label="Copy Ticket ID"
+                              >
+                                <Copy className="w-4 h-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="bg-[#232A45] text-white rounded-md px-3 py-2 text-xs shadow-lg">
+                              Click to copy Ticket ID
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
+                      {/* QR Code with copy and tooltip */}
+                      <div className="flex items-center mb-3 gap-2">
+                        <span className="text-xs font-medium text-blue-200 min-w-[70px]">QR:</span>
+                        <span className="text-xs font-mono text-blue-100 break-all">{ticket.qrCode.slice(0, 12)}...</span>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="ml-1 text-blue-200 hover:text-white"
+                                onClick={() => copyToClipboard(ticket.qrCode, 'QR Code')}
+                                tabIndex={0}
+                                aria-label="Copy QR Code"
+                              >
+                                <Copy className="w-4 h-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="bg-[#232A45] text-white rounded-md px-3 py-2 text-xs shadow-lg">
+                              Click to copy QR
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
                       {ticketEvent && ticketEvent.isVirtual && (
                         <Button
                           size="sm"
-                          className="w-full"
-                          onClick={() =>
-                            setSelectedVirtualEventId(ticket.eventId)
-                          }
-                          variant={
-                            ticketEvent.status === "live"
-                              ? "default"
-                              : "outline"
-                          }
+                          className="w-full bg-gradient-to-r from-blue-700 to-purple-700 text-white font-bold mt-2 hover:from-blue-800 hover:to-purple-800"
+                          onClick={() => setSelectedVirtualEventId(ticket.eventId)}
+                          variant={ticketEvent.status === "live" ? "default" : "outline"}
                         >
                           {ticketEvent.status === "live" ? (
                             <div className="flex items-center">
@@ -365,6 +417,7 @@ export function AttendeeDashboard() {
                 <div className="mt-4 text-center">
                   <Button
                     variant="outline"
+                    className="bg-[#232A45] border-[#2D365A] text-white hover:bg-gradient-to-r hover:from-blue-700 hover:to-purple-700 hover:text-white"
                     onClick={() => setShowMyTickets(true)}
                   >
                     View All Tickets
@@ -376,16 +429,16 @@ export function AttendeeDashboard() {
         )}
 
         {/* Search and Filter */}
-        <Card className="mb-6 sm:mb-8">
+        <Card className="mb-6 sm:mb-8 bg-[#232A45] border-none shadow-lg rounded-2xl">
           <CardContent className="p-4 sm:p-6">
             {/* Mobile Filter Toggle */}
             <div className="flex items-center justify-between mb-4 sm:hidden">
-              <h3 className="font-semibold text-gray-900">Find Events</h3>
+              <h3 className="font-semibold text-white">Find Events</h3>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setShowFilters(!showFilters)}
-                className="flex items-center space-x-2"
+                className="flex items-center space-x-2 bg-[#232A45] border-[#2D365A] text-white hover:bg-gradient-to-r hover:from-blue-700 hover:to-purple-700 hover:text-white"
               >
                 <Filter className="w-4 h-4" />
                 <span>Filters</span>
@@ -395,12 +448,12 @@ export function AttendeeDashboard() {
             <div className="space-y-4 sm:space-y-0 sm:flex sm:gap-4">
               {/* Search - Always Visible */}
               <div className="flex-1 relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-blue-400 w-4 h-4" />
                 <Input
                   placeholder="Search events..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 h-10 sm:h-12"
+                  className="pl-10 h-10 sm:h-12 bg-[#181F36] text-white border border-[#2D365A] placeholder:text-blue-200 focus:ring-2 focus:ring-blue-700"
                 />
               </div>
 
@@ -411,10 +464,10 @@ export function AttendeeDashboard() {
                 } sm:block`}
               >
                 <Select value={filterType} onValueChange={setFilterType}>
-                  <SelectTrigger className="w-full sm:w-48 h-10 sm:h-12">
+                  <SelectTrigger className="w-full sm:w-48 h-10 sm:h-12 bg-[#181F36] text-white border border-[#2D365A]">
                     <SelectValue placeholder="Filter by type" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-[#232A45] text-white border border-[#2D365A]">
                     <SelectItem value="all">All Events</SelectItem>
                     <SelectItem value="gala">Gala</SelectItem>
                     <SelectItem value="concert">Concert</SelectItem>
@@ -434,26 +487,26 @@ export function AttendeeDashboard() {
           {filteredEvents.map((event) => (
             <Card
               key={event.id}
-              className="hover:shadow-lg transition-shadow cursor-pointer overflow-hidden"
+              className="hover:shadow-lg transition-shadow cursor-pointer overflow-hidden bg-gradient-to-br from-[#232A45] via-[#232A45]/80 to-[#181F36] border-none rounded-2xl shadow-md h-full flex flex-col"
             >
-              <CardContent className="p-0">
+              <CardContent className="p-0 flex flex-col h-full">
                 {event.bannerBase64 && (
                   <img
                     src={event.bannerBase64 || "/placeholder.svg"}
                     alt={event.title}
-                    className="w-full h-40 sm:h-48 object-cover"
+                    className="w-full h-40 sm:h-48 object-cover rounded-t-2xl"
                   />
                 )}
-                <div className="p-4 sm:p-6">
+                <div className="p-4 sm:p-6 flex flex-col flex-1">
                   <div className="flex items-center justify-between mb-2">
-                    <Badge variant="outline" className="text-xs">
+                    <Badge variant="outline" className="text-xs bg-blue-700/80 text-white border-none">
                       {event.type}
                     </Badge>
                     <Badge
                       className={`text-xs ${
                         event.ticketPrice === 0
-                          ? "bg-green-100 text-green-800"
-                          : "bg-blue-100 text-blue-800"
+                          ? "bg-green-700/80 text-white"
+                          : "bg-blue-700/80 text-white"
                       }`}
                     >
                       {event.ticketPrice === 0
@@ -462,14 +515,14 @@ export function AttendeeDashboard() {
                     </Badge>
                   </div>
 
-                  <h3 className="text-lg font-semibold mb-2 line-clamp-2">
+                  <h3 className="text-lg font-bold mb-2 line-clamp-2 text-white">
                     {event.title}
                   </h3>
-                  <p className="text-gray-600 text-sm mb-4 line-clamp-2">
+                  <p className="text-gray-300 text-sm mb-4 line-clamp-2">
                     {event.description}
                   </p>
 
-                  <div className="space-y-2 text-sm text-gray-500 mb-4">
+                  <div className="space-y-2 text-sm text-blue-200 mb-4">
                     <div className="flex items-center">
                       <Calendar className="w-4 h-4 mr-2 flex-shrink-0" />
                       <span className="truncate">
@@ -488,40 +541,42 @@ export function AttendeeDashboard() {
                     </div>
                   </div>
 
-                  <Button
-                    className="w-full"
-                    onClick={() => {
-                      const userTicket = myTickets.find(
-                        (ticket) => ticket.eventId === event.id
-                      );
+                  <div className="mt-auto flex items-center w-full">
+                    <Button
+                      className="w-full bg-gradient-to-r from-blue-700 to-purple-700 text-white font-bold hover:from-blue-800 hover:to-purple-800"
+                      onClick={() => {
+                        const userTicket = myTickets.find(
+                          (ticket) => ticket.eventId === event.id
+                        );
 
-                      if (event.isVirtual && userTicket) {
-                        setSelectedVirtualEventId(event.id);
-                      } else {
-                        setSelectedEvent(event);
+                        if (event.isVirtual && userTicket) {
+                          setSelectedVirtualEventId(event.id);
+                        } else {
+                          setSelectedEvent(event);
+                        }
+                      }}
+                      variant={
+                        event.status === "live" && event.isVirtual
+                          ? "default"
+                          : "outline"
                       }
-                    }}
-                    variant={
-                      event.status === "live" && event.isVirtual
-                        ? "default"
-                        : "outline"
-                    }
-                    size="sm"
-                  >
-                    {event.isVirtual &&
-                    myTickets.find((ticket) => ticket.eventId === event.id) ? (
-                      event.status === "live" ? (
-                        <div className="flex items-center">
-                          <div className="w-2 h-2 bg-white rounded-full mr-2 animate-pulse"></div>
-                          Join Live Event
-                        </div>
+                      size="sm"
+                    >
+                      {event.isVirtual &&
+                      myTickets.find((ticket) => ticket.eventId === event.id) ? (
+                        event.status === "live" ? (
+                          <div className="flex items-center">
+                            <div className="w-2 h-2 bg-white rounded-full mr-2 animate-pulse"></div>
+                            Join Live Event
+                          </div>
+                        ) : (
+                          "Join Virtual Event"
+                        )
                       ) : (
-                        "Join Virtual Event"
-                      )
-                    ) : (
-                      "Register Now"
-                    )}
-                  </Button>
+                        "Register Now"
+                      )}
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -530,11 +585,11 @@ export function AttendeeDashboard() {
 
         {filteredEvents.length === 0 && (
           <div className="text-center py-12">
-            <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
+            <Calendar className="w-12 h-12 text-blue-400 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-white mb-2">
               No events found
             </h3>
-            <p className="text-gray-600">
+            <p className="text-gray-400">
               Try adjusting your search or filter criteria
             </p>
           </div>
