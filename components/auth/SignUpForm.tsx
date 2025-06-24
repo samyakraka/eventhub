@@ -59,7 +59,7 @@ export function SignUpForm({ onSuccess }: SignUpFormProps) {
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
               className="pl-10 h-12 border-transparent bg-slate-700/60 text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-inner rounded-xl"
-              placeholder="Enter your full name"
+              placeholder="Enter your full name/organization name"
               required
             />
           </div>

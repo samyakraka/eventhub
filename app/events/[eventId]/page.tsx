@@ -1,14 +1,21 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { useParams, useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { useAuth } from "@/contexts/AuthContext"
-import { doc, getDoc, collection, query, where, getDocs } from "firebase/firestore"
-import { db } from "@/lib/firebase"
-import type { Event, Ticket } from "@/types"
+import { useState, useEffect } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/contexts/AuthContext";
+import {
+  doc,
+  getDoc,
+  collection,
+  query,
+  where,
+  getDocs,
+} from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import type { Event, Ticket } from "@/types";
 import {
   ArrowLeft,
   Calendar,
@@ -28,111 +35,125 @@ import {
   X,
   Shield,
   Tag,
-} from "lucide-react"
-import { format } from "date-fns"
-import { toast } from "@/hooks/use-toast"
-import { EventRegistrationDialog } from "@/components/dashboard/EventRegistrationDialog"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Table, TableBody, TableCell, TableHeader, TableRow, TableHead } from "@/components/ui/table"
-import { Input } from "@/components/ui/input"
-import { Separator } from "@/components/ui/separator"
+} from "lucide-react";
+import { format } from "date-fns";
+import { toast } from "@/hooks/use-toast";
+import { EventRegistrationDialog } from "@/components/dashboard/EventRegistrationDialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHeader,
+  TableRow,
+  TableHead,
+} from "@/components/ui/table";
+import { Input } from "@/components/ui/input";
+import { Separator } from "@/components/ui/separator";
 
 export default function EventPage() {
-  const params = useParams()
-  const router = useRouter()
-  const { user } = useAuth()
-  const [event, setEvent] = useState<Event | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [userTicket, setUserTicket] = useState<Ticket | null>(null)
-  const [showRegistration, setShowRegistration] = useState(false)
-  const [totalAttendees, setTotalAttendees] = useState(0)
+  const params = useParams();
+  const router = useRouter();
+  const { user } = useAuth();
+  const [event, setEvent] = useState<Event | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [userTicket, setUserTicket] = useState<Ticket | null>(null);
+  const [showRegistration, setShowRegistration] = useState(false);
+  const [totalAttendees, setTotalAttendees] = useState(0);
 
-  const eventId = params.eventId as string
+  const eventId = params.eventId as string;
 
   useEffect(() => {
     if (eventId) {
-      fetchEventDetails()
-      fetchUserTicket()
-      fetchAttendeeCount()
+      fetchEventDetails();
+      fetchUserTicket();
+      fetchAttendeeCount();
     }
-  }, [eventId, user])
+  }, [eventId, user]);
 
   const fetchEventDetails = async () => {
     try {
-      const eventDoc = await getDoc(doc(db, "events", eventId))
+      const eventDoc = await getDoc(doc(db, "events", eventId));
       if (eventDoc.exists()) {
         const eventData = {
           id: eventDoc.id,
           ...eventDoc.data(),
           date: eventDoc.data().date.toDate(),
           createdAt: eventDoc.data().createdAt.toDate(),
-        } as Event
-        setEvent(eventData)
+        } as Event;
+        setEvent(eventData);
       }
     } catch (error) {
-      console.error("Error fetching event:", error)
+      console.error("Error fetching event:", error);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const fetchUserTicket = async () => {
-    if (!user) return
+    if (!user) return;
 
     try {
-      const q = query(collection(db, "tickets"), where("eventId", "==", eventId), where("attendeeUid", "==", user.uid))
-      const querySnapshot = await getDocs(q)
+      const q = query(
+        collection(db, "tickets"),
+        where("eventId", "==", eventId),
+        where("attendeeUid", "==", user.uid)
+      );
+      const querySnapshot = await getDocs(q);
       if (!querySnapshot.empty) {
         const ticketData = {
           id: querySnapshot.docs[0].id,
           ...querySnapshot.docs[0].data(),
           createdAt: querySnapshot.docs[0].data().createdAt.toDate(),
-        } as Ticket
-        setUserTicket(ticketData)
+        } as Ticket;
+        setUserTicket(ticketData);
       }
     } catch (error) {
-      console.error("Error fetching user ticket:", error)
+      console.error("Error fetching user ticket:", error);
     }
-  }
+  };
 
   const fetchAttendeeCount = async () => {
     try {
-      const q = query(collection(db, "tickets"), where("eventId", "==", eventId))
-      const querySnapshot = await getDocs(q)
-      setTotalAttendees(querySnapshot.size)
+      const q = query(
+        collection(db, "tickets"),
+        where("eventId", "==", eventId)
+      );
+      const querySnapshot = await getDocs(q);
+      setTotalAttendees(querySnapshot.size);
     } catch (error) {
-      console.error("Error fetching attendee count:", error)
+      console.error("Error fetching attendee count:", error);
     }
-  }
+  };
 
   const shareEvent = async () => {
-    if (!event) return
+    if (!event) return;
 
     const shareData = {
       title: event.title,
       text: `Check out this amazing event: ${event.title}`,
       url: window.location.href,
-    }
+    };
 
     if (navigator.share) {
       try {
-        await navigator.share(shareData)
+        await navigator.share(shareData);
       } catch (error) {
-        copyEventLink()
+        copyEventLink();
       }
     } else {
-      copyEventLink()
+      copyEventLink();
     }
-  }
+  };
 
   const copyEventLink = () => {
     navigator.clipboard.writeText(window.location.href).then(() => {
       toast({
         title: "Link Copied!",
         description: "Event link copied to clipboard",
-      })
-    })
-  }
+      });
+    });
+  };
 
   if (loading) {
     return (
@@ -142,22 +163,29 @@ export default function EventPage() {
           <p className="text-gray-600">Loading event details...</p>
         </div>
       </div>
-    )
+    );
   }
 
   if (!event) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">Event not found</h2>
-          <p className="text-gray-600 mb-6">The event you're looking for doesn't exist or has been removed.</p>
-          <Button onClick={() => router.push("/")} className="bg-gradient-to-r from-blue-600 to-purple-600">
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">
+            Event not found
+          </h2>
+          <p className="text-gray-600 mb-6">
+            The event you're looking for doesn't exist or has been removed.
+          </p>
+          <Button
+            onClick={() => router.push("/")}
+            className="bg-gradient-to-r from-blue-600 to-purple-600"
+          >
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back to Events
           </Button>
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -166,11 +194,19 @@ export default function EventPage() {
       <header className="bg-white shadow-sm border-b sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between py-4">
-            <Button variant="ghost" onClick={() => router.push("/")} className="flex items-center space-x-2">
+            <Button
+              variant="ghost"
+              onClick={() => router.push("/")}
+              className="flex items-center space-x-2"
+            >
               <ArrowLeft className="w-4 h-4" />
               <span>Back to Events</span>
             </Button>
-            <Button variant="outline" onClick={shareEvent} className="flex items-center space-x-2">
+            <Button
+              variant="outline"
+              onClick={shareEvent}
+              className="flex items-center space-x-2"
+            >
               <Share2 className="w-4 h-4" />
               <span className="hidden sm:inline">Share Event</span>
             </Button>
@@ -196,42 +232,56 @@ export default function EventPage() {
                       event.status === "live"
                         ? "bg-red-500"
                         : event.status === "upcoming"
-                          ? "bg-green-500"
-                          : "bg-gray-500"
+                        ? "bg-green-500"
+                        : "bg-gray-500"
                     } text-white`}
                   >
-                    {event.status === "live" && <div className="w-2 h-2 bg-white rounded-full mr-2 animate-pulse" />}
+                    {event.status === "live" && (
+                      <div className="w-2 h-2 bg-white rounded-full mr-2 animate-pulse" />
+                    )}
                     {event.status.toUpperCase()}
                   </Badge>
-                  <Badge variant="outline" className="bg-white/90 text-gray-900">
+                  <Badge
+                    variant="outline"
+                    className="bg-white/90 text-gray-900"
+                  >
                     {event.type}
                   </Badge>
                   {event.isVirtual && (
-                    <Badge variant="outline" className="bg-white/90 text-purple-700">
+                    <Badge
+                      variant="outline"
+                      className="bg-white/90 text-purple-700"
+                    >
                       <Globe className="w-3 h-3 mr-1" />
                       Virtual
                     </Badge>
                   )}
                 </div>
-                <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-2">{event.title}</h1>
+                <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-2">
+                  {event.title}
+                </h1>
               </div>
             </div>
           ) : (
             <div className="h-64 sm:h-80 lg:h-96 bg-gradient-to-br from-blue-100 via-purple-100 to-pink-100 rounded-2xl flex items-center justify-center">
               <div className="text-center">
                 <Calendar className="w-16 h-16 sm:w-20 sm:h-20 text-blue-500 mx-auto mb-4" />
-                <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 mb-4">{event.title}</h1>
+                <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 mb-4">
+                  {event.title}
+                </h1>
                 <div className="flex flex-wrap gap-2 justify-center">
                   <Badge
                     className={`${
                       event.status === "live"
                         ? "bg-red-500"
                         : event.status === "upcoming"
-                          ? "bg-green-500"
-                          : "bg-gray-500"
+                        ? "bg-green-500"
+                        : "bg-gray-500"
                     } text-white`}
                   >
-                    {event.status === "live" && <div className="w-2 h-2 bg-white rounded-full mr-2 animate-pulse" />}
+                    {event.status === "live" && (
+                      <div className="w-2 h-2 bg-white rounded-full mr-2 animate-pulse" />
+                    )}
                     {event.status.toUpperCase()}
                   </Badge>
                   <Badge variant="outline">{event.type}</Badge>
@@ -260,8 +310,12 @@ export default function EventPage() {
               </CardHeader>
               <CardContent className="space-y-6">
                 <div>
-                  <h3 className="font-semibold text-gray-900 mb-2">Description</h3>
-                  <p className="text-gray-700 leading-relaxed">{event.description}</p>
+                  <h3 className="font-semibold text-gray-900 mb-2">
+                    Description
+                  </h3>
+                  <p className="text-gray-700 leading-relaxed">
+                    {event.description}
+                  </p>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
@@ -271,7 +325,9 @@ export default function EventPage() {
                     </div>
                     <div>
                       <p className="text-sm text-gray-500">Date</p>
-                      <p className="font-semibold">{format(event.date, "EEEE, MMMM dd, yyyy")}</p>
+                      <p className="font-semibold">
+                        {format(event.date, "EEEE, MMMM dd, yyyy")}
+                      </p>
                     </div>
                   </div>
 
@@ -297,7 +353,9 @@ export default function EventPage() {
                     </div>
                     <div>
                       <p className="text-sm text-gray-500">Location</p>
-                      <p className="font-semibold">{event.isVirtual ? "Virtual Event" : event.location}</p>
+                      <p className="font-semibold">
+                        {event.isVirtual ? "Virtual Event" : event.location}
+                      </p>
                     </div>
                   </div>
 
@@ -307,7 +365,11 @@ export default function EventPage() {
                     </div>
                     <div>
                       <p className="text-sm text-gray-500">Price</p>
-                      <p className="font-semibold">{event.ticketPrice === 0 ? "Free" : `₹${event.ticketPrice}`}</p>
+                      <p className="font-semibold">
+                        {event.ticketPrice === 0
+                          ? "Free"
+                          : `$${event.ticketPrice}`}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -317,14 +379,19 @@ export default function EventPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <h3 className="text-lg font-bold mb-3">About this event</h3>
-                    <p className="text-gray-700 leading-relaxed">{event.description}</p>
+                    <p className="text-gray-700 leading-relaxed">
+                      {event.description}
+                    </p>
                   </div>
                   <div>
                     <h3 className="text-lg font-bold mb-3">Event Details</h3>
                     <ul className="space-y-3 text-gray-700">
                       <li className="flex items-center gap-3">
                         <Calendar className="w-5 h-5 text-purple-500 flex-shrink-0" />
-                        <span>Date: {format(event.date, "PPPP")}, {event.time} - {event.endTime}</span>
+                        <span>
+                          Date: {format(event.date, "PPPP")}, {event.time} -{" "}
+                          {event.endTime}
+                        </span>
                       </li>
                       <li className="flex items-center gap-3">
                         {event.isVirtual ? (
@@ -332,15 +399,28 @@ export default function EventPage() {
                         ) : (
                           <MapPin className="w-5 h-5 text-purple-500 flex-shrink-0" />
                         )}
-                        <span>Location: {event.isVirtual ? "Virtual Event" : event.location}</span>
+                        <span>
+                          Location:{" "}
+                          {event.isVirtual ? "Virtual Event" : event.location}
+                        </span>
                       </li>
                       <li className="flex items-center gap-3">
                         <Users className="w-5 h-5 text-purple-500 flex-shrink-0" />
-                        <span>Attendees: {event.maxAttendees ? `${totalAttendees}/${event.maxAttendees}` : "Unlimited"}</span>
+                        <span>
+                          Attendees:{" "}
+                          {event.maxAttendees
+                            ? `${totalAttendees}/${event.maxAttendees}`
+                            : "Unlimited"}
+                        </span>
                       </li>
                       <li className="flex items-center gap-3">
                         <DollarSign className="w-5 h-5 text-purple-500 flex-shrink-0" />
-                        <span>Price: {event.ticketPrice === 0 ? "Free" : `₹${event.ticketPrice}`}</span>
+                        <span>
+                          Price:{" "}
+                          {event.ticketPrice === 0
+                            ? "Free"
+                            : `$${event.ticketPrice}`}
+                        </span>
                       </li>
                       {event.requiresCheckIn && (
                         <li className="flex items-center gap-3 text-orange-700 font-medium">
@@ -360,15 +440,21 @@ export default function EventPage() {
 
                 {user && user.uid === event.organizerUid && (
                   <div className="mt-8">
-                    <h3 className="text-lg font-bold mb-3">Organizer Insights</h3>
+                    <h3 className="text-lg font-bold mb-3">
+                      Organizer Insights
+                    </h3>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <Card>
                         <CardContent className="p-6">
                           <div className="flex items-center">
                             <Users className="w-8 h-8 text-blue-600" />
                             <div className="ml-4">
-                              <p className="text-sm font-medium text-gray-600">Attendees</p>
-                              <p className="text-2xl font-bold text-gray-900">{totalAttendees} / {event.maxAttendees || "∞"}</p>
+                              <p className="text-sm font-medium text-gray-600">
+                                Attendees
+                              </p>
+                              <p className="text-2xl font-bold text-gray-900">
+                                {totalAttendees} / {event.maxAttendees || "∞"}
+                              </p>
                             </div>
                           </div>
                         </CardContent>
@@ -378,8 +464,14 @@ export default function EventPage() {
                           <div className="flex items-center">
                             <CheckCircle className="w-8 h-8 text-green-600" />
                             <div className="ml-4">
-                              <p className="text-sm font-medium text-gray-600">Checked In</p>
-                              <p className="text-2xl font-bold text-gray-900">{userTicket && userTicket.checkedIn ? "Yes" : "No"}</p>
+                              <p className="text-sm font-medium text-gray-600">
+                                Checked In
+                              </p>
+                              <p className="text-2xl font-bold text-gray-900">
+                                {userTicket && userTicket.checkedIn
+                                  ? "Yes"
+                                  : "No"}
+                              </p>
                             </div>
                           </div>
                         </CardContent>
@@ -389,8 +481,12 @@ export default function EventPage() {
                           <div className="flex items-center">
                             <DollarSign className="w-8 h-8 text-purple-600" />
                             <div className="ml-4">
-                              <p className="text-sm font-medium text-gray-600">Total Revenue</p>
-                              <p className="text-2xl font-bold text-gray-900">₹{event.ticketPrice * totalAttendees}</p>
+                              <p className="text-sm font-medium text-gray-600">
+                                Total Revenue
+                              </p>
+                              <p className="text-2xl font-bold text-gray-900">
+                                ${event.ticketPrice * totalAttendees}
+                              </p>
                             </div>
                           </div>
                         </CardContent>
@@ -400,8 +496,13 @@ export default function EventPage() {
                           <div className="flex items-center">
                             <BarChart3 className="w-8 h-8 text-purple-600" />
                             <div className="ml-4">
-                              <p className="text-sm font-medium text-gray-600">Donations</p>
-                              <p className="text-2xl font-bold text-gray-900">₹{0}</p> {/* Placeholder for donations */}
+                              <p className="text-sm font-medium text-gray-600">
+                                Donations
+                              </p>
+                              <p className="text-2xl font-bold text-gray-900">
+                                ${0}
+                              </p>{" "}
+                              {/* Placeholder for donations */}
                             </div>
                           </div>
                         </CardContent>
@@ -414,7 +515,9 @@ export default function EventPage() {
                         <TabsTrigger value="overview">Overview</TabsTrigger>
                         <TabsTrigger value="attendees">Attendees</TabsTrigger>
                         <TabsTrigger value="checkin">Check-in</TabsTrigger>
-                        {event.isVirtual && <TabsTrigger value="stream">Live Stream</TabsTrigger>}
+                        {event.isVirtual && (
+                          <TabsTrigger value="stream">Live Stream</TabsTrigger>
+                        )}
                       </TabsList>
                       <TabsContent value="overview" className="space-y-4">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -423,11 +526,35 @@ export default function EventPage() {
                               <CardTitle>Event Overview</CardTitle>
                             </CardHeader>
                             <CardContent className="space-y-2 text-gray-700">
-                              <p><strong>Type:</strong> {event.type}</p>
-                              <p><strong>Status:</strong> {event.status}</p>
-                              <p><strong>Organizer:</strong> {event.organizerUid || "N/A"}</p>
-                              {event.virtualLink && <p><strong>Virtual Link:</strong> <a href={event.virtualLink} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{event.virtualLink}</a></p>}
-                              {event.virtualType && <p><strong>Virtual Type:</strong> {event.virtualType}</p>}
+                              <p>
+                                <strong>Type:</strong> {event.type}
+                              </p>
+                              <p>
+                                <strong>Status:</strong> {event.status}
+                              </p>
+                              <p>
+                                <strong>Organizer:</strong>{" "}
+                                {event.organizerUid || "N/A"}
+                              </p>
+                              {event.virtualLink && (
+                                <p>
+                                  <strong>Virtual Link:</strong>{" "}
+                                  <a
+                                    href={event.virtualLink}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-blue-600 hover:underline"
+                                  >
+                                    {event.virtualLink}
+                                  </a>
+                                </p>
+                              )}
+                              {event.virtualType && (
+                                <p>
+                                  <strong>Virtual Type:</strong>{" "}
+                                  {event.virtualType}
+                                </p>
+                              )}
                             </CardContent>
                           </Card>
                           <Card>
@@ -435,16 +562,29 @@ export default function EventPage() {
                               <CardTitle>Financial Summary</CardTitle>
                             </CardHeader>
                             <CardContent className="space-y-2 text-gray-700">
-                              <p><strong>Ticket Price:</strong> {event.ticketPrice === 0 ? "Free" : `₹${event.ticketPrice}`}</p>
-                              <p><strong>Total Revenue:</strong> ₹{event.ticketPrice * totalAttendees}</p>
-                              <p><strong>Total Donations:</strong> ₹{0}</p> {/* Placeholder for donations */}
+                              <p>
+                                <strong>Ticket Price:</strong>{" "}
+                                {event.ticketPrice === 0
+                                  ? "Free"
+                                  : `$${event.ticketPrice}`}
+                              </p>
+                              <p>
+                                <strong>Total Revenue:</strong> $
+                                {event.ticketPrice * totalAttendees}
+                              </p>
+                              <p>
+                                <strong>Total Donations:</strong> ${0}
+                              </p>{" "}
+                              {/* Placeholder for donations */}
                             </CardContent>
                           </Card>
                         </div>
                       </TabsContent>
                       <TabsContent value="attendees" className="space-y-4">
                         <div className="flex justify-between items-center mb-4">
-                          <h4 className="text-lg font-bold">Attendees ({totalAttendees})</h4>
+                          <h4 className="text-lg font-bold">
+                            Attendees ({totalAttendees})
+                          </h4>
                           <Input
                             placeholder="Search attendees..."
                             className="max-w-xs"
@@ -460,16 +600,24 @@ export default function EventPage() {
                                 <TableHead>Email</TableHead>
                                 <TableHead>Registered On</TableHead>
                                 <TableHead>Checked In</TableHead>
-                                <TableHead className="text-right">Price Paid</TableHead>
+                                <TableHead className="text-right">
+                                  Price Paid
+                                </TableHead>
                               </TableRow>
                             </TableHeader>
                             <TableBody>
                               <TableRow>
                                 <TableCell>John Doe</TableCell>
                                 <TableCell>john.doe@example.com</TableCell>
-                                <TableCell>{format(new Date(), "MMM dd, yyyy p")}</TableCell>
-                                <TableCell><Check className="w-4 h-4 text-green-500" /></TableCell>
-                                <TableCell className="text-right">₹{event.ticketPrice.toFixed(2)}</TableCell>
+                                <TableCell>
+                                  {format(new Date(), "MMM dd, yyyy p")}
+                                </TableCell>
+                                <TableCell>
+                                  <Check className="w-4 h-4 text-green-500" />
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  ${event.ticketPrice.toFixed(2)}
+                                </TableCell>
                               </TableRow>
                             </TableBody>
                           </Table>
@@ -478,8 +626,12 @@ export default function EventPage() {
                         )}
                       </TabsContent>
                       <TabsContent value="checkin" className="space-y-4">
-                        <h4 className="text-lg font-bold mb-4">Check-in Attendees</h4>
-                        <p className="text-gray-600 mb-4">Use the QR code scanner to check in attendees.</p>
+                        <h4 className="text-lg font-bold mb-4">
+                          Check-in Attendees
+                        </h4>
+                        <p className="text-gray-600 mb-4">
+                          Use the QR code scanner to check in attendees.
+                        </p>
                         {/* <QRCodeReader onScan={handleScanQRCode} /> */}
                         {/* {scanResult && (
                           <div className="mt-4 p-4 bg-gray-100 rounded-lg">
@@ -495,7 +647,9 @@ export default function EventPage() {
                       </TabsContent>
                       {event.isVirtual && (
                         <TabsContent value="stream" className="space-y-4">
-                          <h4 className="text-lg font-bold mb-4">Live Stream</h4>
+                          <h4 className="text-lg font-bold mb-4">
+                            Live Stream
+                          </h4>
                           {event.virtualLink ? (
                             <div className="aspect-video w-full rounded-lg overflow-hidden border">
                               {event.virtualType === "meeting" ? (
@@ -516,7 +670,9 @@ export default function EventPage() {
                             </div>
                           ) : (
                             <div className="p-6 bg-gray-100 rounded-lg text-gray-600 text-center">
-                              <p>No virtual stream link provided for this event.</p>
+                              <p>
+                                No virtual stream link provided for this event.
+                              </p>
                             </div>
                           )}
                         </TabsContent>
@@ -538,8 +694,12 @@ export default function EventPage() {
                     <Users className="w-6 h-6 text-white" />
                   </div>
                   <div>
-                    <p className="font-semibold text-gray-900">Event Organizer</p>
-                    <p className="text-gray-600">Professional event management</p>
+                    <p className="font-semibold text-gray-900">
+                      Event Organizer
+                    </p>
+                    <p className="text-gray-600">
+                      Professional event management
+                    </p>
                   </div>
                 </div>
               </CardContent>
@@ -553,17 +713,23 @@ export default function EventPage() {
               <CardContent className="p-6">
                 <div className="text-center mb-6">
                   <div className="text-3xl font-bold text-gray-900 mb-2">
-                    {event.ticketPrice === 0 ? "Free" : `₹${event.ticketPrice}`}
+                    {event.ticketPrice === 0 ? "Free" : `$${event.ticketPrice}`}
                   </div>
-                  {event.ticketPrice > 0 && <p className="text-gray-600">per ticket</p>}
+                  {event.ticketPrice > 0 && (
+                    <p className="text-gray-600">per ticket</p>
+                  )}
                 </div>
 
                 {userTicket ? (
                   <div className="space-y-4">
                     <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
                       <CheckCircle className="w-8 h-8 text-green-600 mx-auto mb-2" />
-                      <p className="font-semibold text-green-900">You're registered!</p>
-                      <p className="text-green-700 text-sm">Ticket ID: {userTicket.id.slice(0, 8)}...</p>
+                      <p className="font-semibold text-green-900">
+                        You're registered!
+                      </p>
+                      <p className="text-green-700 text-sm">
+                        Ticket ID: {userTicket.id.slice(0, 8)}...
+                      </p>
                     </div>
                     <Button
                       className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
@@ -577,12 +743,20 @@ export default function EventPage() {
                   <div className="space-y-4">
                     <Button
                       className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-                      onClick={() => (user ? setShowRegistration(true) : router.push("/"))}
+                      onClick={() =>
+                        user ? setShowRegistration(true) : router.push("/")
+                      }
                       disabled={event.status === "completed"}
                     >
-                      {event.status === "completed" ? "Event Ended" : "Register Now"}
+                      {event.status === "completed"
+                        ? "Event Ended"
+                        : "Register Now"}
                     </Button>
-                    {!user && <p className="text-xs text-gray-500 text-center">Sign in required to register</p>}
+                    {!user && (
+                      <p className="text-xs text-gray-500 text-center">
+                        Sign in required to register
+                      </p>
+                    )}
                   </div>
                 )}
 
@@ -594,12 +768,18 @@ export default function EventPage() {
                   {event.maxAttendees && (
                     <div className="flex items-center justify-between text-sm text-gray-600">
                       <span>Capacity</span>
-                      <span className="font-semibold">{event.maxAttendees}</span>
+                      <span className="font-semibold">
+                        {event.maxAttendees}
+                      </span>
                     </div>
                   )}
                 </div>
 
-                <Button variant="outline" className="w-full mt-4" onClick={shareEvent}>
+                <Button
+                  variant="outline"
+                  className="w-full mt-4"
+                  onClick={shareEvent}
+                >
                   <Share2 className="w-4 h-4 mr-2" />
                   Share Event
                 </Button>
@@ -636,8 +816,8 @@ export default function EventPage() {
                       event.status === "live"
                         ? "bg-red-100 text-red-800"
                         : event.status === "upcoming"
-                          ? "bg-green-100 text-green-800"
-                          : "bg-gray-100 text-gray-800"
+                        ? "bg-green-100 text-green-800"
+                        : "bg-gray-100 text-gray-800"
                     }`}
                   >
                     {event.status}
@@ -658,5 +838,5 @@ export default function EventPage() {
         />
       )}
     </div>
-  )
+  );
 }

@@ -1,18 +1,30 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Switch } from "@/components/ui/switch"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { doc, updateDoc } from "firebase/firestore"
-import { db } from "@/lib/firebase"
-import { toast } from "@/hooks/use-toast"
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { doc, updateDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import { toast } from "@/hooks/use-toast";
 import {
   ChevronLeft,
   ChevronRight,
@@ -25,20 +37,25 @@ import {
   Users,
   Percent,
   Shield,
-} from "lucide-react"
-import type { Event } from "@/types"
-import { format } from "date-fns"
+} from "lucide-react";
+import type { Event } from "@/types";
+import { format } from "date-fns";
 
 interface EditEventDialogProps {
-  event: Event | null
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  onEventUpdated: () => void
+  event: Event | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onEventUpdated: () => void;
 }
 
-export function EditEventDialog({ event, open, onOpenChange, onEventUpdated }: EditEventDialogProps) {
-  const [loading, setLoading] = useState(false)
-  const [currentStep, setCurrentStep] = useState(1)
+export function EditEventDialog({
+  event,
+  open,
+  onOpenChange,
+  onEventUpdated,
+}: EditEventDialogProps) {
+  const [loading, setLoading] = useState(false);
+  const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -59,7 +76,7 @@ export function EditEventDialog({ event, open, onOpenChange, onEventUpdated }: E
     status: "upcoming",
     virtualType: "meeting",
     requiresCheckIn: true,
-  })
+  });
 
   const steps = [
     { id: 1, title: "Basic Info", icon: Calendar },
@@ -67,7 +84,7 @@ export function EditEventDialog({ event, open, onOpenChange, onEventUpdated }: E
     { id: 3, title: "Images", icon: Upload },
     { id: 4, title: "Pricing & Discounts", icon: DollarSign },
     { id: 5, title: "Preview", icon: Users },
-  ]
+  ];
 
   useEffect(() => {
     if (event) {
@@ -91,96 +108,108 @@ export function EditEventDialog({ event, open, onOpenChange, onEventUpdated }: E
         status: event.status,
         virtualType: event.virtualType || "meeting",
         requiresCheckIn: event.requiresCheckIn || true,
-      })
+      });
     }
-  }, [event])
+  }, [event]);
 
   const handleInputChange = (field: string, value: any) => {
-    setFormData((prev) => ({ ...prev, [field]: value }))
-  }
+    setFormData((prev) => ({ ...prev, [field]: value }));
+  };
 
-  const handleImageUpload = (field: "logoBase64" | "bannerBase64", file: File) => {
+  const handleImageUpload = (
+    field: "logoBase64" | "bannerBase64",
+    file: File
+  ) => {
     if (file.size > 5 * 1024 * 1024) {
       toast({
         title: "File too large",
         description: "Please select an image smaller than 5MB",
         variant: "destructive",
-      })
-      return
+      });
+      return;
     }
 
-    const reader = new FileReader()
+    const reader = new FileReader();
     reader.onload = (e) => {
-      const base64 = e.target?.result as string
+      const base64 = e.target?.result as string;
       setFormData((prev) => ({
         ...prev,
         [field]: base64,
-      }))
-    }
-    reader.readAsDataURL(file)
-  }
+      }));
+    };
+    reader.readAsDataURL(file);
+  };
 
   const removeImage = (field: "logoBase64" | "bannerBase64") => {
-    setFormData((prev) => ({ ...prev, [field]: "" }))
-  }
+    setFormData((prev) => ({ ...prev, [field]: "" }));
+  };
 
   const handleSubmit = async () => {
-    if (!event) return
+    if (!event) return;
 
-    setLoading(true)
+    setLoading(true);
     try {
       const updateData = {
         ...formData,
         date: new Date(formData.date),
         ticketPrice: Number(formData.ticketPrice),
-        maxAttendees: formData.maxAttendees ? Number(formData.maxAttendees) : null,
-        discountPercentage: formData.discountEnabled ? Number(formData.discountPercentage) : null,
-      }
+        maxAttendees: formData.maxAttendees
+          ? Number(formData.maxAttendees)
+          : null,
+        discountPercentage: formData.discountEnabled
+          ? Number(formData.discountPercentage)
+          : null,
+      };
 
-      await updateDoc(doc(db, "events", event.id), updateData)
+      await updateDoc(doc(db, "events", event.id), updateData);
 
       toast({
         title: "Event Updated Successfully!",
         description: "Your event has been updated.",
-      })
+      });
 
-      onEventUpdated()
-      onOpenChange(false)
+      onEventUpdated();
+      onOpenChange(false);
     } catch (error: any) {
       toast({
         title: "Error",
         description: error.message,
         variant: "destructive",
-      })
+      });
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const nextStep = () => {
-    if (currentStep < 5) setCurrentStep(currentStep + 1)
-  }
+    if (currentStep < 5) setCurrentStep(currentStep + 1);
+  };
 
   const prevStep = () => {
-    if (currentStep > 1) setCurrentStep(currentStep - 1)
-  }
+    if (currentStep > 1) setCurrentStep(currentStep - 1);
+  };
 
   const canProceed = () => {
     switch (currentStep) {
       case 1:
-        return formData.title && formData.description && formData.type
+        return formData.title && formData.description && formData.type;
       case 2:
-        return formData.date && formData.time && formData.endTime && (formData.isVirtual || formData.location)
+        return (
+          formData.date &&
+          formData.time &&
+          formData.endTime &&
+          (formData.isVirtual || formData.location)
+        );
       case 3:
-        return true
+        return true;
       case 4:
-        return true
+        return true;
       default:
-        return true
+        return true;
     }
-  }
+  };
 
-  if (!event) return null
+  if (!event) return null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -196,18 +225,26 @@ export function EditEventDialog({ event, open, onOpenChange, onEventUpdated }: E
             <div key={step.id} className="flex items-center">
               <div
                 className={`flex items-center justify-center w-10 h-10 rounded-full border-2 ${
-                  currentStep >= step.id ? "bg-blue-600 border-blue-600 text-white" : "border-gray-300 text-gray-400"
+                  currentStep >= step.id
+                    ? "bg-blue-600 border-blue-600 text-white"
+                    : "border-gray-300 text-gray-400"
                 }`}
               >
                 <step.icon className="w-5 h-5" />
               </div>
               <span
-                className={`ml-2 text-sm font-medium ${currentStep >= step.id ? "text-blue-600" : "text-gray-400"}`}
+                className={`ml-2 text-sm font-medium ${
+                  currentStep >= step.id ? "text-blue-600" : "text-gray-400"
+                }`}
               >
                 {step.title}
               </span>
               {index < steps.length - 1 && (
-                <div className={`w-12 h-0.5 mx-4 ${currentStep > step.id ? "bg-blue-600" : "bg-gray-300"}`} />
+                <div
+                  className={`w-12 h-0.5 mx-4 ${
+                    currentStep > step.id ? "bg-blue-600" : "bg-gray-300"
+                  }`}
+                />
               )}
             </div>
           ))}
@@ -232,13 +269,18 @@ export function EditEventDialog({ event, open, onOpenChange, onEventUpdated }: E
               </div>
 
               <div>
-                <Label htmlFor="description" className="text-base font-semibold">
+                <Label
+                  htmlFor="description"
+                  className="text-base font-semibold"
+                >
                   Description *
                 </Label>
                 <Textarea
                   id="description"
                   value={formData.description}
-                  onChange={(e) => handleInputChange("description", e.target.value)}
+                  onChange={(e) =>
+                    handleInputChange("description", e.target.value)
+                  }
                   placeholder="Describe your event..."
                   rows={4}
                   className="mt-2"
@@ -250,7 +292,10 @@ export function EditEventDialog({ event, open, onOpenChange, onEventUpdated }: E
                 <Label htmlFor="type" className="text-base font-semibold">
                   Event Type *
                 </Label>
-                <Select value={formData.type} onValueChange={(value) => handleInputChange("type", value)}>
+                <Select
+                  value={formData.type}
+                  onValueChange={(value) => handleInputChange("type", value)}
+                >
                   <SelectTrigger className="mt-2 h-12">
                     <SelectValue placeholder="Select event type" />
                   </SelectTrigger>
@@ -269,7 +314,10 @@ export function EditEventDialog({ event, open, onOpenChange, onEventUpdated }: E
                 <Label htmlFor="status" className="text-base font-semibold">
                   Event Status
                 </Label>
-                <Select value={formData.status} onValueChange={(value) => handleInputChange("status", value)}>
+                <Select
+                  value={formData.status}
+                  onValueChange={(value) => handleInputChange("status", value)}
+                >
                   <SelectTrigger className="mt-2 h-12">
                     <SelectValue placeholder="Select event status" />
                   </SelectTrigger>
@@ -290,10 +338,14 @@ export function EditEventDialog({ event, open, onOpenChange, onEventUpdated }: E
                     id="themeColor"
                     type="color"
                     value={formData.themeColor}
-                    onChange={(e) => handleInputChange("themeColor", e.target.value)}
+                    onChange={(e) =>
+                      handleInputChange("themeColor", e.target.value)
+                    }
                     className="w-20 h-12"
                   />
-                  <span className="text-sm text-gray-600">{formData.themeColor}</span>
+                  <span className="text-sm text-gray-600">
+                    {formData.themeColor}
+                  </span>
                 </div>
               </div>
             </div>
@@ -305,7 +357,9 @@ export function EditEventDialog({ event, open, onOpenChange, onEventUpdated }: E
                 <Switch
                   id="isVirtual"
                   checked={formData.isVirtual}
-                  onCheckedChange={(checked) => handleInputChange("isVirtual", checked)}
+                  onCheckedChange={(checked) =>
+                    handleInputChange("isVirtual", checked)
+                  }
                 />
                 <Label htmlFor="isVirtual" className="text-base font-semibold">
                   Virtual Event
@@ -315,40 +369,63 @@ export function EditEventDialog({ event, open, onOpenChange, onEventUpdated }: E
               {formData.isVirtual ? (
                 <div className="space-y-4">
                   <div>
-                    <Label className="text-base font-semibold">Virtual Event Type</Label>
+                    <Label className="text-base font-semibold">
+                      Virtual Event Type
+                    </Label>
                     <div className="grid grid-cols-2 gap-4 mt-2">
                       <div
                         className={`p-4 border-2 rounded-lg cursor-pointer transition-colors ${
-                          formData.virtualType === "meeting" ? "border-blue-500 bg-blue-50" : "border-gray-200"
+                          formData.virtualType === "meeting"
+                            ? "border-blue-500 bg-blue-50"
+                            : "border-gray-200"
                         }`}
-                        onClick={() => handleInputChange("virtualType", "meeting")}
+                        onClick={() =>
+                          handleInputChange("virtualType", "meeting")
+                        }
                       >
                         <h4 className="font-medium">Meeting Link</h4>
-                        <p className="text-sm text-gray-600">Zoom, Teams, or other meeting platform</p>
+                        <p className="text-sm text-gray-600">
+                          Zoom, Teams, or other meeting platform
+                        </p>
                       </div>
                       <div
                         className={`p-4 border-2 rounded-lg cursor-pointer transition-colors ${
-                          formData.virtualType === "broadcast" ? "border-blue-500 bg-blue-50" : "border-gray-200"
+                          formData.virtualType === "broadcast"
+                            ? "border-blue-500 bg-blue-50"
+                            : "border-gray-200"
                         }`}
-                        onClick={() => handleInputChange("virtualType", "broadcast")}
+                        onClick={() =>
+                          handleInputChange("virtualType", "broadcast")
+                        }
                       >
                         <h4 className="font-medium">Live Broadcast</h4>
-                        <p className="text-sm text-gray-600">YouTube, website, or streaming platform</p>
+                        <p className="text-sm text-gray-600">
+                          YouTube, website, or streaming platform
+                        </p>
                       </div>
                     </div>
                   </div>
 
                   <div>
-                    <Label htmlFor="virtualLink" className="text-base font-semibold">
-                      {formData.virtualType === "meeting" ? "Meeting Link" : "Broadcast URL"}
+                    <Label
+                      htmlFor="virtualLink"
+                      className="text-base font-semibold"
+                    >
+                      {formData.virtualType === "meeting"
+                        ? "Meeting Link"
+                        : "Broadcast URL"}
                     </Label>
                     <Input
                       id="virtualLink"
                       type="url"
                       value={formData.virtualLink}
-                      onChange={(e) => handleInputChange("virtualLink", e.target.value)}
+                      onChange={(e) =>
+                        handleInputChange("virtualLink", e.target.value)
+                      }
                       placeholder={
-                        formData.virtualType === "meeting" ? "https://zoom.us/j/..." : "https://youtube.com/watch?v=..."
+                        formData.virtualType === "meeting"
+                          ? "https://zoom.us/j/..."
+                          : "https://youtube.com/watch?v=..."
                       }
                       className="mt-2 h-12"
                     />
@@ -362,7 +439,9 @@ export function EditEventDialog({ event, open, onOpenChange, onEventUpdated }: E
                   <Input
                     id="location"
                     value={formData.location}
-                    onChange={(e) => handleInputChange("location", e.target.value)}
+                    onChange={(e) =>
+                      handleInputChange("location", e.target.value)
+                    }
                     placeholder="Enter event location"
                     className="mt-2 h-12"
                     required={!formData.isVirtual}
@@ -407,7 +486,9 @@ export function EditEventDialog({ event, open, onOpenChange, onEventUpdated }: E
                     id="endTime"
                     type="time"
                     value={formData.endTime}
-                    onChange={(e) => handleInputChange("endTime", e.target.value)}
+                    onChange={(e) =>
+                      handleInputChange("endTime", e.target.value)
+                    }
                     className="mt-2 h-12"
                     required
                   />
@@ -415,7 +496,10 @@ export function EditEventDialog({ event, open, onOpenChange, onEventUpdated }: E
               </div>
 
               <div>
-                <Label htmlFor="maxAttendees" className="text-base font-semibold">
+                <Label
+                  htmlFor="maxAttendees"
+                  className="text-base font-semibold"
+                >
                   Maximum Attendees (optional)
                 </Label>
                 <Input
@@ -423,7 +507,9 @@ export function EditEventDialog({ event, open, onOpenChange, onEventUpdated }: E
                   type="number"
                   min="1"
                   value={formData.maxAttendees}
-                  onChange={(e) => handleInputChange("maxAttendees", e.target.value)}
+                  onChange={(e) =>
+                    handleInputChange("maxAttendees", e.target.value)
+                  }
                   placeholder="Leave empty for unlimited"
                   className="mt-2 h-12"
                 />
@@ -457,13 +543,15 @@ export function EditEventDialog({ event, open, onOpenChange, onEventUpdated }: E
                     <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-blue-400 transition-colors">
                       <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                       <p className="text-gray-600 mb-2">Upload event logo</p>
-                      <p className="text-sm text-gray-500 mb-4">PNG, JPG up to 5MB</p>
+                      <p className="text-sm text-gray-500 mb-4">
+                        PNG, JPG up to 5MB
+                      </p>
                       <Input
                         type="file"
                         accept="image/*"
                         onChange={(e) => {
-                          const file = e.target.files?.[0]
-                          if (file) handleImageUpload("logoBase64", file)
+                          const file = e.target.files?.[0];
+                          if (file) handleImageUpload("logoBase64", file);
                         }}
                         className="hidden"
                         id="logo-upload"
@@ -502,13 +590,15 @@ export function EditEventDialog({ event, open, onOpenChange, onEventUpdated }: E
                     <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-blue-400 transition-colors">
                       <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                       <p className="text-gray-600 mb-2">Upload event banner</p>
-                      <p className="text-sm text-gray-500 mb-4">PNG, JPG up to 5MB (recommended: 1200x600)</p>
+                      <p className="text-sm text-gray-500 mb-4">
+                        PNG, JPG up to 5MB (recommended: 1200x600)
+                      </p>
                       <Input
                         type="file"
                         accept="image/*"
                         onChange={(e) => {
-                          const file = e.target.files?.[0]
-                          if (file) handleImageUpload("bannerBase64", file)
+                          const file = e.target.files?.[0];
+                          if (file) handleImageUpload("bannerBase64", file);
                         }}
                         className="hidden"
                         id="banner-upload"
@@ -528,7 +618,10 @@ export function EditEventDialog({ event, open, onOpenChange, onEventUpdated }: E
           {currentStep === 4 && (
             <div className="space-y-6">
               <div>
-                <Label htmlFor="ticketPrice" className="text-base font-semibold">
+                <Label
+                  htmlFor="ticketPrice"
+                  className="text-base font-semibold"
+                >
                   Ticket Price ($)
                 </Label>
                 <Input
@@ -537,11 +630,15 @@ export function EditEventDialog({ event, open, onOpenChange, onEventUpdated }: E
                   min="0"
                   step="0.01"
                   value={formData.ticketPrice}
-                  onChange={(e) => handleInputChange("ticketPrice", e.target.value)}
+                  onChange={(e) =>
+                    handleInputChange("ticketPrice", e.target.value)
+                  }
                   placeholder="0.00"
                   className="mt-2 h-12"
                 />
-                <p className="text-sm text-gray-500 mt-1">Set to 0 for free events</p>
+                <p className="text-sm text-gray-500 mt-1">
+                  Set to 0 for free events
+                </p>
               </div>
 
               {/* Check-in Requirement */}
@@ -550,9 +647,14 @@ export function EditEventDialog({ event, open, onOpenChange, onEventUpdated }: E
                   <Switch
                     id="requiresCheckIn"
                     checked={formData.requiresCheckIn}
-                    onCheckedChange={(checked) => handleInputChange("requiresCheckIn", checked)}
+                    onCheckedChange={(checked) =>
+                      handleInputChange("requiresCheckIn", checked)
+                    }
                   />
-                  <Label htmlFor="requiresCheckIn" className="text-base font-semibold flex items-center">
+                  <Label
+                    htmlFor="requiresCheckIn"
+                    className="text-base font-semibold flex items-center"
+                  >
                     <Shield className="w-4 h-4 mr-2" />
                     Require Check-in for Access
                   </Label>
@@ -566,7 +668,9 @@ export function EditEventDialog({ event, open, onOpenChange, onEventUpdated }: E
                 </p>
                 {formData.requiresCheckIn && (
                   <div className="mt-3 p-3 bg-white rounded border">
-                    <p className="text-sm font-medium text-orange-800">Security Benefits:</p>
+                    <p className="text-sm font-medium text-orange-800">
+                      Security Benefits:
+                    </p>
                     <ul className="text-sm text-orange-700 mt-1 list-disc list-inside">
                       <li>Prevents unauthorized access</li>
                       <li>Ensures only verified attendees participate</li>
@@ -582,16 +686,24 @@ export function EditEventDialog({ event, open, onOpenChange, onEventUpdated }: E
                   <Switch
                     id="discountEnabled"
                     checked={formData.discountEnabled}
-                    onCheckedChange={(checked) => handleInputChange("discountEnabled", checked)}
+                    onCheckedChange={(checked) =>
+                      handleInputChange("discountEnabled", checked)
+                    }
                   />
-                  <Label htmlFor="discountEnabled" className="text-base font-semibold">
+                  <Label
+                    htmlFor="discountEnabled"
+                    className="text-base font-semibold"
+                  >
                     Enable Discount Codes
                   </Label>
                 </div>
 
                 {formData.discountEnabled && (
                   <div>
-                    <Label htmlFor="discountPercentage" className="text-base font-semibold">
+                    <Label
+                      htmlFor="discountPercentage"
+                      className="text-base font-semibold"
+                    >
                       Discount Percentage
                     </Label>
                     <div className="flex items-center space-x-2 mt-2">
@@ -601,22 +713,32 @@ export function EditEventDialog({ event, open, onOpenChange, onEventUpdated }: E
                         min="1"
                         max="100"
                         value={formData.discountPercentage}
-                        onChange={(e) => handleInputChange("discountPercentage", e.target.value)}
+                        onChange={(e) =>
+                          handleInputChange(
+                            "discountPercentage",
+                            e.target.value
+                          )
+                        }
                         className="h-12"
                       />
                       <Percent className="w-5 h-5 text-gray-400" />
                     </div>
                     <p className="text-sm text-gray-600 mt-2">
-                      You can create discount codes that give {formData.discountPercentage}% off the ticket price
+                      You can create discount codes that give{" "}
+                      {formData.discountPercentage}% off the ticket price
                     </p>
                     {formData.ticketPrice > 0 && (
                       <div className="mt-3 p-3 bg-white rounded border">
                         <p className="text-sm">
-                          <strong>Original Price:</strong> ${formData.ticketPrice}
+                          <strong>Original Price:</strong> $
+                          {formData.ticketPrice}
                         </p>
                         <p className="text-sm">
                           <strong>Discounted Price:</strong> $
-                          {(formData.ticketPrice * (1 - formData.discountPercentage / 100)).toFixed(2)}
+                          {(
+                            formData.ticketPrice *
+                            (1 - formData.discountPercentage / 100)
+                          ).toFixed(2)}
                         </p>
                       </div>
                     )}
@@ -632,7 +754,11 @@ export function EditEventDialog({ event, open, onOpenChange, onEventUpdated }: E
                 <CardHeader>
                   <CardTitle className="flex items-center space-x-2">
                     {formData.logoBase64 && (
-                      <img src={formData.logoBase64 || "/placeholder.svg"} alt="Logo" className="w-8 h-8 rounded" />
+                      <img
+                        src={formData.logoBase64 || "/placeholder.svg"}
+                        alt="Logo"
+                        className="w-8 h-8 rounded"
+                      />
                     )}
                     <span>{formData.title}</span>
                     <Badge variant="outline">{formData.type}</Badge>
@@ -641,8 +767,8 @@ export function EditEventDialog({ event, open, onOpenChange, onEventUpdated }: E
                         formData.status === "live"
                           ? "bg-green-100 text-green-800"
                           : formData.status === "upcoming"
-                            ? "bg-blue-100 text-blue-800"
-                            : "bg-gray-100 text-gray-800"
+                          ? "bg-blue-100 text-blue-800"
+                          : "bg-gray-100 text-gray-800"
                       }
                     >
                       {formData.status}
@@ -672,11 +798,19 @@ export function EditEventDialog({ event, open, onOpenChange, onEventUpdated }: E
                     </div>
                     <div className="flex items-center space-x-2">
                       <MapPin className="w-4 h-4 text-gray-500" />
-                      <span>{formData.isVirtual ? "Virtual Event" : formData.location}</span>
+                      <span>
+                        {formData.isVirtual
+                          ? "Virtual Event"
+                          : formData.location}
+                      </span>
                     </div>
                     <div className="flex items-center space-x-2">
                       <DollarSign className="w-4 h-4 text-gray-500" />
-                      <span>{formData.ticketPrice === 0 ? "Free" : `$${formData.ticketPrice}`}</span>
+                      <span>
+                        {formData.ticketPrice === 0
+                          ? "Free"
+                          : `$${formData.ticketPrice}`}
+                      </span>
                     </div>
                   </div>
 
@@ -694,7 +828,8 @@ export function EditEventDialog({ event, open, onOpenChange, onEventUpdated }: E
                     {formData.discountEnabled && (
                       <div className="p-3 bg-purple-50 rounded">
                         <p className="text-sm font-medium text-purple-800">
-                          Discount Codes Enabled: {formData.discountPercentage}% off
+                          Discount Codes Enabled: {formData.discountPercentage}%
+                          off
                         </p>
                       </div>
                     )}
@@ -719,11 +854,19 @@ export function EditEventDialog({ event, open, onOpenChange, onEventUpdated }: E
           </Button>
 
           <div className="flex space-x-2">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+            >
               Cancel
             </Button>
             {currentStep === 5 ? (
-              <Button onClick={handleSubmit} disabled={loading} className="flex items-center space-x-2">
+              <Button
+                onClick={handleSubmit}
+                disabled={loading}
+                className="flex items-center space-x-2"
+              >
                 {loading ? (
                   <>
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -737,7 +880,11 @@ export function EditEventDialog({ event, open, onOpenChange, onEventUpdated }: E
                 )}
               </Button>
             ) : (
-              <Button onClick={nextStep} disabled={!canProceed()} className="flex items-center space-x-2">
+              <Button
+                onClick={nextStep}
+                disabled={!canProceed()}
+                className="flex items-center space-x-2"
+              >
                 <span>Next</span>
                 <ChevronRight className="w-4 h-4" />
               </Button>
@@ -746,5 +893,5 @@ export function EditEventDialog({ event, open, onOpenChange, onEventUpdated }: E
         </div>
       </DialogContent>
     </Dialog>
-  )
+  );
 }
