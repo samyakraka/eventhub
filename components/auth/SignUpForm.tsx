@@ -1,54 +1,58 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { useAuth } from "@/contexts/AuthContext"
-import { toast } from "@/hooks/use-toast"
-import { Mail, Lock, User, Eye, EyeOff } from "lucide-react"
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "@/hooks/use-toast";
+import { Mail, Lock, User, Eye, EyeOff, Sparkles } from "lucide-react";
 
 interface SignUpFormProps {
-  onSuccess?: () => void
+  onSuccess?: () => void;
 }
 
 export function SignUpForm({ onSuccess }: SignUpFormProps) {
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [displayName, setDisplayName] = useState("")
-  const [showPassword, setShowPassword] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const { signUp, signInWithGoogle } = useAuth()
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [displayName, setDisplayName] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const { signUp, signInWithGoogle, sendEmailLink } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
+    e.preventDefault();
+    setLoading(true);
 
     try {
-      await signUp(email, password, displayName)
+      await signUp(email, password, displayName);
       toast({
         title: "Account created!",
-        description: "Welcome to EventHub. Please select your role to continue.",
-      })
-      onSuccess?.()
+        description:
+          "Welcome to EventHub. Please select your role to continue.",
+      });
+      onSuccess?.();
     } catch (error: any) {
       toast({
         title: "Sign up failed",
         description: error.message,
         variant: "destructive",
-      })
+      });
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="displayName" className="text-sm font-medium text-gray-300">
+          <Label
+            htmlFor="displayName"
+            className="text-sm font-medium text-gray-300"
+          >
             Full Name
           </Label>
           <div className="relative">
@@ -84,7 +88,10 @@ export function SignUpForm({ onSuccess }: SignUpFormProps) {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="password" className="text-sm font-medium text-gray-300">
+          <Label
+            htmlFor="password"
+            className="text-sm font-medium text-gray-300"
+          >
             Password
           </Label>
           <div className="relative">
@@ -104,10 +111,16 @@ export function SignUpForm({ onSuccess }: SignUpFormProps) {
               onClick={() => setShowPassword(!showPassword)}
               className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-300 transition-colors"
             >
-              {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              {showPassword ? (
+                <EyeOff className="w-5 h-5" />
+              ) : (
+                <Eye className="w-5 h-5" />
+              )}
             </button>
           </div>
-          <p className="text-xs text-gray-500">Password must be at least 6 characters</p>
+          <p className="text-xs text-gray-500">
+            Password must be at least 6 characters
+          </p>
         </div>
       </div>
 
@@ -116,7 +129,9 @@ export function SignUpForm({ onSuccess }: SignUpFormProps) {
           <span className="w-full border-t border-gray-700" />
         </div>
         <div className="relative flex justify-center text-sm">
-          <span className="px-4 bg-gray-800 text-gray-400 rounded-full font-medium">Or continue with</span>
+          <span className="px-4 bg-gray-800 text-gray-400 rounded-full font-medium">
+            Or continue with
+          </span>
         </div>
       </div>
 
@@ -124,19 +139,54 @@ export function SignUpForm({ onSuccess }: SignUpFormProps) {
         type="button"
         variant="outline"
         onClick={async () => {
+          if (!email) {
+            toast({
+              title: "Email required",
+              description: "Please enter your email to send a magic link.",
+              variant: "destructive",
+            });
+            return;
+          }
           try {
-            await signInWithGoogle()
+            await sendEmailLink(email);
+            toast({
+              title: "Magic link sent!",
+              description: "Check your email for a passwordless sign-up link.",
+            });
+            onSuccess?.();
+          } catch (error: any) {
+            toast({
+              title: "Failed to send magic link",
+              description: error.message,
+              variant: "destructive",
+            });
+          }
+        }}
+        disabled={!email}
+        className="w-full h-12 rounded-full border-gray-600 text-gray-200 hover:bg-gray-700 transition-all duration-300"
+      >
+        <Sparkles className="w-4 h-4 mr-2" />
+        <span className="text-gray-700">Send Magic Link</span>
+      </Button>
+
+      <Button
+        type="button"
+        variant="outline"
+        onClick={async () => {
+          try {
+            await signInWithGoogle();
             toast({
               title: "Account created!",
-              description: "Welcome to EventHub. Please select your role to continue.",
-            })
-            onSuccess?.()
+              description:
+                "Welcome to EventHub. Please select your role to continue.",
+            });
+            onSuccess?.();
           } catch (error: any) {
             toast({
               title: "Google sign up failed",
               description: error.message,
               variant: "destructive",
-            })
+            });
           }
         }}
         className="w-full h-12 rounded-full border-gray-600 text-gray-200 hover:bg-gray-700 transition-all duration-300"
@@ -177,5 +227,5 @@ export function SignUpForm({ onSuccess }: SignUpFormProps) {
         )}
       </Button>
     </form>
-  )
+  );
 }

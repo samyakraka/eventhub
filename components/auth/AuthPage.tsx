@@ -1,18 +1,19 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { LoginForm } from "./LoginForm"
-import { SignUpForm } from "./SignUpForm"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Sparkles } from "lucide-react"
+import { useState } from "react";
+import { LoginForm } from "./LoginForm";
+import { SignUpForm } from "./SignUpForm";
+import { EmailLinkForm } from "./EmailLinkForm";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Sparkles } from "lucide-react";
 
 interface AuthPageProps {
-  onSuccess?: () => void
-  defaultTab?: "login" | "signup"
+  onSuccess?: () => void;
+  defaultTab?: "login" | "signup" | "magic-link";
 }
 
 export function AuthPage({ onSuccess, defaultTab = "login" }: AuthPageProps) {
-  const [activeTab, setActiveTab] = useState(defaultTab)
+  const [activeTab, setActiveTab] = useState(defaultTab);
 
   return (
     <div className="w-full max-w-md mx-auto p-4 sm:p-6">
@@ -25,30 +26,42 @@ export function AuthPage({ onSuccess, defaultTab = "login" }: AuthPageProps) {
             EventHub
           </h2>
         </div>
-        <p className="text-gray-600 text-sm sm:text-base">Join thousands creating amazing events</p>
+        <p className="text-gray-600 text-sm sm:text-base">
+          Join thousands creating amazing events
+        </p>
       </div>
 
-      <Tabs 
-        value={activeTab} 
+      <Tabs
+        value={activeTab}
         onValueChange={(value) => {
-          if (value === "login" || value === "signup") {
-            setActiveTab(value)
+          if (
+            value === "login" ||
+            value === "signup" ||
+            value === "magic-link"
+          ) {
+            setActiveTab(value);
           }
-        }} 
+        }}
         className="w-full"
       >
-        <TabsList className="grid w-full grid-cols-2 mb-6 h-12 bg-gray-700/50 rounded-xl p-1">
+        <TabsList className="grid w-full grid-cols-3 mb-6 h-12 bg-gray-700/50 rounded-xl p-1">
           <TabsTrigger
             value="login"
-            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-lg rounded-lg transition-all duration-300 text-gray-300 hover:text-white data-[state=active]:scale-[1.02]"
+            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-lg rounded-lg transition-all duration-300 text-gray-300 hover:text-white data-[state=active]:scale-[1.02] text-xs sm:text-sm"
           >
             Sign In
           </TabsTrigger>
           <TabsTrigger
             value="signup"
-            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-lg rounded-lg transition-all duration-300 text-gray-300 hover:text-white data-[state=active]:scale-[1.02]"
+            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-lg rounded-lg transition-all duration-300 text-gray-300 hover:text-white data-[state=active]:scale-[1.02] text-xs sm:text-sm"
           >
             Sign Up
+          </TabsTrigger>
+          <TabsTrigger
+            value="magic-link"
+            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-pink-600 data-[state=active]:text-white data-[state=active]:shadow-lg rounded-lg transition-all duration-300 text-gray-300 hover:text-white data-[state=active]:scale-[1.02] text-xs sm:text-sm"
+          >
+            Magic Link
           </TabsTrigger>
         </TabsList>
 
@@ -59,7 +72,11 @@ export function AuthPage({ onSuccess, defaultTab = "login" }: AuthPageProps) {
         <TabsContent value="signup">
           <SignUpForm onSuccess={onSuccess} />
         </TabsContent>
+
+        <TabsContent value="magic-link">
+          <EmailLinkForm onSuccess={onSuccess} />
+        </TabsContent>
       </Tabs>
     </div>
-  )
+  );
 }

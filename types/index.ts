@@ -1,9 +1,25 @@
+export interface UserProfile {
+  bio?: string;
+  organization?: string;
+  website?: string;
+  location?: string;
+  preferences?: {
+    notifications: boolean;
+    emailUpdates: boolean;
+    publicProfile: boolean;
+  };
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+// Update User interface to include optional profile
 export interface User {
   uid: string;
   email: string;
   displayName: string;
-  role: "organizer" | "attendee";
+  role?: "organizer" | "attendee"; // Make role optional initially
   profileImageBase64?: string;
+  profile?: UserProfile;
   createdAt: Date;
 }
 
