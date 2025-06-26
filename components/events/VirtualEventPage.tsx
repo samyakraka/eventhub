@@ -42,6 +42,7 @@ export function VirtualEventPage({ eventId, onBack }: VirtualEventPageProps) {
           ...eventDoc.data(),
           date: eventDoc.data().date.toDate(),
           createdAt: eventDoc.data().createdAt.toDate(),
+          registrationCount: 0, // Default value for consistency
         } as Event
         setEvent(eventData)
       }

@@ -100,8 +100,78 @@ export function HomePage({
         createdAt: doc.data().createdAt.toDate(),
       })) as Event[];
 
-      eventsData.sort((a, b) => a.date.getTime() - b.date.getTime());
-      setEvents(eventsData);
+      // Fetch registration counts for each event
+      const eventsWithStats = await Promise.all(
+        eventsData.map(async (event) => {
+          try {
+            const ticketsQuery = query(
+              collection(db, "tickets"),
+              where("eventId", "==", event.id)
+            );
+            const ticketsSnapshot = await getDocs(ticketsQuery);
+            const registrationCount = ticketsSnapshot.size;
+
+            return {
+              ...event,
+              registrationCount,
+            };
+          } catch (error) {
+            console.error(`Error fetching tickets for event ${event.id}:`, error);
+            return {
+              ...event,
+              registrationCount: 0,
+            };
+          }
+        })
+      );
+
+      // Sort events for featured selection
+      // Priority: 1) Recent events (within 30 days), 2) High registration count, 3) Date proximity
+      const now = new Date();
+      const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+      eventsWithStats.sort((a, b) => {
+        // Calculate days until event
+        const daysUntilA = Math.max(0, (a.date.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+        const daysUntilB = Math.max(0, (b.date.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+
+        // Score calculation: registration weight + recency weight
+        // Higher registration count = higher score
+        // Events happening sooner (but not too soon) = higher score
+        const registrationScoreA = a.registrationCount * 10;
+        const registrationScoreB = b.registrationCount * 10;
+
+        // Recency score: events happening in 7-30 days get highest score
+        let recencyScoreA = 0;
+        let recencyScoreB = 0;
+
+        if (daysUntilA >= 7 && daysUntilA <= 30) {
+          recencyScoreA = 100 - (daysUntilA - 7) * 2; // Score decreases as we move away from optimal range
+        } else if (daysUntilA < 7) {
+          recencyScoreA = 50 - (7 - daysUntilA) * 5; // Penalty for being too soon
+        } else {
+          recencyScoreA = Math.max(0, 50 - (daysUntilA - 30)); // Penalty for being too far
+        }
+
+        if (daysUntilB >= 7 && daysUntilB <= 30) {
+          recencyScoreB = 100 - (daysUntilB - 7) * 2;
+        } else if (daysUntilB < 7) {
+          recencyScoreB = 50 - (7 - daysUntilB) * 5;
+        } else {
+          recencyScoreB = Math.max(0, 50 - (daysUntilB - 30));
+        }
+
+        const totalScoreA = registrationScoreA + recencyScoreA;
+        const totalScoreB = registrationScoreB + recencyScoreB;
+
+        // Sort by total score (descending), then by date (ascending) as tiebreaker
+        if (totalScoreB !== totalScoreA) {
+          return totalScoreB - totalScoreA;
+        }
+        return a.date.getTime() - b.date.getTime();
+      });
+
+      setEvents(eventsWithStats);
     } catch (error) {
       console.error("Error fetching events:", error);
     } finally {

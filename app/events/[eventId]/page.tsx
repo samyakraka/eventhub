@@ -50,6 +50,8 @@ import {
 } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { AuthPage } from "@/components/auth/AuthPage";
 
 export default function EventPage() {
   const params = useParams();
@@ -60,6 +62,10 @@ export default function EventPage() {
   const [userTicket, setUserTicket] = useState<Ticket | null>(null);
   const [showRegistration, setShowRegistration] = useState(false);
   const [totalAttendees, setTotalAttendees] = useState(0);
+  const [showAuthDialog, setShowAuthDialog] = useState(false);
+  const [activeAuthTab, setActiveAuthTab] = useState<"login" | "signup">(
+    "login"
+  );
 
   const eventId = params.eventId as string;
 
@@ -153,6 +159,14 @@ export default function EventPage() {
         description: "Event link copied to clipboard",
       });
     });
+  };
+
+  const handleAuthSuccess = () => {
+    setShowAuthDialog(false);
+    // Show registration dialog once user is authenticated
+    if (user) {
+      setShowRegistration(true);
+    }
   };
 
   if (loading) {
@@ -743,9 +757,14 @@ export default function EventPage() {
                   <div className="space-y-4">
                     <Button
                       className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-                      onClick={() =>
-                        user ? setShowRegistration(true) : router.push("/")
-                      }
+                      onClick={() => {
+                        if (user) {
+                          setShowRegistration(true);
+                        } else {
+                          setActiveAuthTab("login");
+                          setShowAuthDialog(true);
+                        }
+                      }}
                       disabled={event.status === "completed"}
                     >
                       {event.status === "completed"
@@ -837,6 +856,13 @@ export default function EventPage() {
           onRegistrationComplete={fetchUserTicket}
         />
       )}
+
+      {/* Auth Dialog */}
+      <Dialog open={showAuthDialog} onOpenChange={setShowAuthDialog}>
+        <DialogContent className="max-w-md max-h-[90vh] p-0 flex flex-col backdrop-blur-xl bg-gray-900/80 rounded-xl shadow-2xl border border-white/10 overflow-y-auto">
+          <AuthPage onSuccess={handleAuthSuccess} defaultTab={activeAuthTab} />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
