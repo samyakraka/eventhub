@@ -80,7 +80,8 @@ export function AttendeeDashboard() {
         ...doc.data(),
         date: doc.data().date.toDate(),
         createdAt: doc.data().createdAt.toDate(),
-      })) as Event[];
+        registrationCount: 0, // Default value for consistency
+      })) as unknown as Event[];
 
       eventsData.sort((a, b) => a.date.getTime() - b.date.getTime());
       setEvents(eventsData);
@@ -609,7 +610,7 @@ export function AttendeeDashboard() {
       <UserProfileDialog
         open={showUserProfile}
         onOpenChange={setShowUserProfile}
-      />
-    </div>
-  );
-}
+        />
+      </div>
+    );
+  }

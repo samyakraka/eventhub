@@ -80,7 +80,8 @@ export function OrganizerDashboard() {
         ...doc.data(),
         date: doc.data().date.toDate(),
         createdAt: doc.data().createdAt.toDate(),
-      })) as Event[];
+        registrationCount: 0, // Default value for consistency
+      })) as unknown as Event[];
 
       eventsData.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
       setEvents(eventsData);

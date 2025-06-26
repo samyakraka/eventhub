@@ -1,41 +1,64 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { useAuth } from "@/contexts/AuthContext"
-import { doc, getDoc, collection, query, where, getDocs, onSnapshot } from "firebase/firestore"
-import { db } from "@/lib/firebase"
-import type { Event, Ticket } from "@/types"
-import { ArrowLeft, Calendar, Clock, MapPin, AlertTriangle, Shield, QrCode, Copy, CheckCircle } from "lucide-react"
-import { format } from "date-fns"
-import { LiveStreamViewer } from "../virtual/LiveStreamViewer"
-import { toast } from "@/hooks/use-toast"
-import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip"
-import { MyTicketsDialog } from "@/components/dashboard/MyTicketsDialog"
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useAuth } from "@/contexts/AuthContext";
+import {
+  doc,
+  getDoc,
+  collection,
+  query,
+  where,
+  getDocs,
+  onSnapshot,
+} from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import type { Event, Ticket } from "@/types";
+import {
+  ArrowLeft,
+  Calendar,
+  Clock,
+  MapPin,
+  AlertTriangle,
+  Shield,
+  QrCode,
+  Copy,
+  CheckCircle,
+} from "lucide-react";
+import { format } from "date-fns";
+import { LiveStreamViewer } from "../virtual/LiveStreamViewer";
+import { toast } from "@/hooks/use-toast";
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+  TooltipProvider,
+} from "@/components/ui/tooltip";
+import { MyTicketsDialog } from "@/components/dashboard/MyTicketsDialog";
 
 interface VirtualEventPageProps {
-  eventId: string
-  onBack: () => void
+  eventId: string;
+  onBack: () => void;
 }
 
 export function VirtualEventPage({ eventId, onBack }: VirtualEventPageProps) {
-  const { user } = useAuth()
-  const [event, setEvent] = useState<Event | null>(null)
-  const [hasAccess, setHasAccess] = useState(false)
-  const [isCheckedIn, setIsCheckedIn] = useState(false)
-  const [loading, setLoading] = useState(true)
-  const [ticket, setTicket] = useState<Ticket | null>(null)
-  const [showMyTickets, setShowMyTickets] = useState(false)
+  const { user } = useAuth();
+  const [event, setEvent] = useState<Event | null>(null);
+  const [hasAccess, setHasAccess] = useState(false);
+  const [isCheckedIn, setIsCheckedIn] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [ticket, setTicket] = useState<Ticket | null>(null);
+  const [showMyTickets, setShowMyTickets] = useState(false);
 
   useEffect(() => {
-    fetchEventAndAccess()
-  }, [eventId, user])
+    fetchEventAndAccess();
+  }, [eventId, user]);
 
   const fetchEventAndAccess = async () => {
     try {
       // Fetch event
-      const eventDoc = await getDoc(doc(db, "events", eventId))
+      const eventDoc = await getDoc(doc(db, "events", eventId));
       if (eventDoc.exists()) {
         const eventData = {
           id: eventDoc.id,
@@ -43,8 +66,8 @@ export function VirtualEventPage({ eventId, onBack }: VirtualEventPageProps) {
           date: eventDoc.data().date.toDate(),
           createdAt: eventDoc.data().createdAt.toDate(),
           registrationCount: 0, // Default value for consistency
-        } as Event
-        setEvent(eventData)
+        } as Event;
+        setEvent(eventData);
       }
 
       // Check if user has access (registered for event)
@@ -52,34 +75,34 @@ export function VirtualEventPage({ eventId, onBack }: VirtualEventPageProps) {
         const ticketsQuery = query(
           collection(db, "tickets"),
           where("eventId", "==", eventId),
-          where("attendeeUid", "==", user.uid),
-        )
-        const ticketsSnapshot = await getDocs(ticketsQuery)
+          where("attendeeUid", "==", user.uid)
+        );
+        const ticketsSnapshot = await getDocs(ticketsQuery);
 
         if (!ticketsSnapshot.empty) {
           const ticketData = {
             id: ticketsSnapshot.docs[0].id,
             ...ticketsSnapshot.docs[0].data(),
             createdAt: ticketsSnapshot.docs[0].data().createdAt.toDate(),
-          } as Ticket
+          } as Ticket;
 
-          setTicket(ticketData)
-          setHasAccess(true)
-          setIsCheckedIn(ticketData.checkedIn || false)
+          setTicket(ticketData);
+          setHasAccess(true);
+          setIsCheckedIn(ticketData.checkedIn || false);
         } else {
-          setHasAccess(false)
-          setIsCheckedIn(false)
+          setHasAccess(false);
+          setIsCheckedIn(false);
         }
       }
     } catch (error) {
-      console.error("Error fetching event:", error)
+      console.error("Error fetching event:", error);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   useEffect(() => {
-    if (!eventId || !user || !hasAccess) return
+    if (!eventId || !user || !hasAccess) return;
 
     // Real-time listener for event updates
     const eventUnsubscribe = onSnapshot(
@@ -91,38 +114,38 @@ export function VirtualEventPage({ eventId, onBack }: VirtualEventPageProps) {
             ...doc.data(),
             date: doc.data().date.toDate(),
             createdAt: doc.data().createdAt.toDate(),
-          } as Event
-          setEvent(eventData)
+          } as Event;
+          setEvent(eventData);
         }
       },
       (error) => {
-        console.error("Error listening to event updates:", error)
-      },
-    )
+        console.error("Error listening to event updates:", error);
+      }
+    );
 
     // Real-time listener for ticket updates (to detect check-in status changes)
-    let ticketUnsubscribe: (() => void) | undefined
+    let ticketUnsubscribe: (() => void) | undefined;
 
     if (ticket) {
       ticketUnsubscribe = onSnapshot(
         doc(db, "tickets", ticket.id),
         (doc) => {
           if (doc.exists()) {
-            const ticketData = doc.data() as Ticket
-            setIsCheckedIn(ticketData.checkedIn || false)
+            const ticketData = doc.data() as Ticket;
+            setIsCheckedIn(ticketData.checkedIn || false);
           }
         },
         (error) => {
-          console.error("Error listening to ticket updates:", error)
-        },
-      )
+          console.error("Error listening to ticket updates:", error);
+        }
+      );
     }
 
     return () => {
-      eventUnsubscribe()
-      if (ticketUnsubscribe) ticketUnsubscribe()
-    }
-  }, [eventId, user, hasAccess, ticket])
+      eventUnsubscribe();
+      if (ticketUnsubscribe) ticketUnsubscribe();
+    };
+  }, [eventId, user, hasAccess, ticket]);
 
   // Add auto-refresh for check-in status
   useEffect(() => {
@@ -141,7 +164,7 @@ export function VirtualEventPage({ eventId, onBack }: VirtualEventPageProps) {
           <p>Loading event...</p>
         </div>
       </div>
-    )
+    );
   }
 
   if (!event) {
@@ -152,7 +175,7 @@ export function VirtualEventPage({ eventId, onBack }: VirtualEventPageProps) {
           <Button onClick={onBack}>Go Back</Button>
         </div>
       </div>
-    )
+    );
   }
 
   if (!hasAccess) {
@@ -173,12 +196,14 @@ export function VirtualEventPage({ eventId, onBack }: VirtualEventPageProps) {
           <div className="text-center">
             <AlertTriangle className="w-12 h-12 text-yellow-500 mx-auto mb-4" />
             <h2 className="text-2xl font-bold mb-2">Registration Required</h2>
-            <p className="text-gray-600 mb-6">You need to register for this event to access the content.</p>
+            <p className="text-gray-600 mb-6">
+              You need to register for this event to access the content.
+            </p>
             <Button onClick={onBack}>Back to Events</Button>
           </div>
         </div>
       </div>
-    )
+    );
   }
 
   // Check-in requirement for ALL events (both virtual and physical)
@@ -192,7 +217,9 @@ export function VirtualEventPage({ eventId, onBack }: VirtualEventPageProps) {
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Back to Events
               </Button>
-              <h1 className="text-2xl font-bold text-white ml-2">{event.title}</h1>
+              <h1 className="text-2xl font-bold text-white ml-2">
+                {event.title}
+              </h1>
               {event.status === "live" && (
                 <span className="px-2 py-1 bg-red-600/20 text-red-400 text-xs rounded-full flex items-center ml-2">
                   <div className="w-2 h-2 bg-red-500 rounded-full mr-1 animate-pulse"></div>
@@ -257,7 +284,10 @@ export function VirtualEventPage({ eventId, onBack }: VirtualEventPageProps) {
                 <div className="text-blue-100 space-y-2">
                   {event.isVirtual ? (
                     <>
-                      <p>1. Wait for the event organizer to start the check-in process</p>
+                      <p>
+                        1. Wait for the event organizer to start the check-in
+                        process
+                      </p>
                       <p>
                         2. Show your QR code from
                         <span
@@ -268,10 +298,13 @@ export function VirtualEventPage({ eventId, onBack }: VirtualEventPageProps) {
                           aria-label="Open My Tickets"
                         >
                           My Tickets
-                        </span>
-                        {" "}to the organizer
+                        </span>{" "}
+                        to the organizer
                       </p>
-                      <p>3. Once checked in, you'll automatically gain access to the virtual event</p>
+                      <p>
+                        3. Once checked in, you'll automatically gain access to
+                        the virtual event
+                      </p>
                     </>
                   ) : (
                     <>
@@ -286,10 +319,12 @@ export function VirtualEventPage({ eventId, onBack }: VirtualEventPageProps) {
                           aria-label="Open My Tickets"
                         >
                           My Tickets
-                        </span>
-                        {" "}at the check-in desk
+                        </span>{" "}
+                        at the check-in desk
                       </p>
-                      <p>3. Once scanned, you'll gain access to all event content</p>
+                      <p>
+                        3. Once scanned, you'll gain access to all event content
+                      </p>
                     </>
                   )}
                 </div>
@@ -298,7 +333,9 @@ export function VirtualEventPage({ eventId, onBack }: VirtualEventPageProps) {
               {ticket && (
                 <div className="bg-[#22305A]/80 rounded-xl p-4 mb-8 mt-4 w-full max-w-xl mx-auto shadow-md">
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="font-medium text-sm text-blue-100 break-all">Ticket ID: {ticket.id}</span>
+                    <span className="font-medium text-sm text-blue-100 break-all">
+                      Ticket ID: {ticket.id}
+                    </span>
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -319,14 +356,18 @@ export function VirtualEventPage({ eventId, onBack }: VirtualEventPageProps) {
                             <Copy className="w-4 h-4 drop-shadow-[0_0_4px_rgba(255,255,255,0.25)]" />
                           </Button>
                         </TooltipTrigger>
-                        <TooltipContent side="top" className="bg-[#232A45] text-white rounded-md px-3 py-2 text-xs shadow-lg">
+                        <TooltipContent
+                          side="top"
+                          className="bg-[#232A45] text-white rounded-md px-3 py-2 text-xs shadow-lg"
+                        >
                           Click to copy
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
                   </div>
                   <div className="text-xs text-blue-200">
-                    Registered on {format(ticket.createdAt, "MMM dd, yyyy 'at' HH:mm")}
+                    Registered on{" "}
+                    {format(ticket.createdAt, "MMM dd, yyyy 'at' HH:mm")}
                   </div>
                 </div>
               )}
@@ -334,25 +375,40 @@ export function VirtualEventPage({ eventId, onBack }: VirtualEventPageProps) {
               {isCheckedIn && (
                 <div className="bg-green-700/20 rounded-lg p-4 mb-8 flex items-center justify-center gap-2">
                   <CheckCircle className="w-6 h-6 text-green-400" />
-                  <span className="text-green-200 font-semibold text-lg">You're now checked in! Access to the event is unlocked.</span>
+                  <span className="text-green-200 font-semibold text-lg">
+                    You're now checked in! Access to the event is unlocked.
+                  </span>
                 </div>
               )}
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-4">
-                <Button onClick={() => { setShowMyTickets(false); onBack(); }} className="w-full sm:w-auto bg-[#232A45] border-[#2D365A] text-white hover:bg-gradient-to-r hover:from-blue-700 hover:to-purple-700 hover:text-white">
+                <Button
+                  onClick={() => {
+                    setShowMyTickets(false);
+                    onBack();
+                  }}
+                  className="w-full sm:w-auto bg-[#232A45] border-[#2D365A] text-white hover:bg-gradient-to-r hover:from-blue-700 hover:to-purple-700 hover:text-white"
+                >
                   Back to Events
                 </Button>
                 {!isCheckedIn && (
-                  <Button variant="outline" onClick={() => window.location.reload()} className="w-full sm:w-auto bg-[#232A45] border-[#2D365A] text-white hover:bg-gradient-to-r hover:from-blue-700 hover:to-purple-700 hover:text-white">
+                  <Button
+                    variant="outline"
+                    onClick={() => window.location.reload()}
+                    className="w-full sm:w-auto bg-[#232A45] border-[#2D365A] text-white hover:bg-gradient-to-r hover:from-blue-700 hover:to-purple-700 hover:text-white"
+                  >
                     Refresh Status
                   </Button>
                 )}
               </div>
             </CardContent>
-            <MyTicketsDialog open={showMyTickets} onOpenChange={setShowMyTickets} />
+            <MyTicketsDialog
+              open={showMyTickets}
+              onOpenChange={setShowMyTickets}
+            />
           </Card>
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -365,7 +421,9 @@ export function VirtualEventPage({ eventId, onBack }: VirtualEventPageProps) {
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back to Events
             </Button>
-            <h1 className="text-2xl font-bold text-white ml-2">{event.title}</h1>
+            <h1 className="text-2xl font-bold text-white ml-2">
+              {event.title}
+            </h1>
             {event.status === "live" && (
               <span className="px-2 py-1 bg-red-600/20 text-red-400 text-xs rounded-full flex items-center ml-2">
                 <div className="w-2 h-2 bg-red-500 rounded-full mr-1 animate-pulse"></div>
@@ -410,11 +468,16 @@ export function VirtualEventPage({ eventId, onBack }: VirtualEventPageProps) {
                 <Clock className="w-5 h-5 text-yellow-600 mr-2" />
                 <div>
                   <p className="font-medium text-yellow-800">
-                    {event.status === "upcoming" ? "Event Starting Soon" : "Event Completed"}
+                    {event.status === "upcoming"
+                      ? "Event Starting Soon"
+                      : "Event Completed"}
                   </p>
                   <p className="text-sm text-yellow-700">
                     {event.status === "upcoming"
-                      ? `This event will begin at ${event.time} on ${format(event.date, "MMM dd, yyyy")}`
+                      ? `This event will begin at ${event.time} on ${format(
+                          event.date,
+                          "MMM dd, yyyy"
+                        )}`
                       : "This event has ended. Thank you for participating!"}
                   </p>
                 </div>
@@ -434,14 +497,21 @@ export function VirtualEventPage({ eventId, onBack }: VirtualEventPageProps) {
             <CardContent>
               <div className="text-center py-8">
                 <Shield className="w-12 h-12 text-green-500 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold mb-2">Welcome to {event.title}!</h3>
+                <h3 className="text-xl font-semibold mb-2">
+                  Welcome to {event.title}!
+                </h3>
                 <p className="text-gray-600 mb-4">
-                  You have been successfully checked in. Enjoy the event at {event.location}!
+                  You have been successfully checked in. Enjoy the event at{" "}
+                  {event.location}!
                 </p>
                 {event.status === "live" && (
                   <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                    <p className="text-green-800 font-medium">🎉 The event is currently live!</p>
-                    <p className="text-green-700 text-sm">Make sure you're at the venue to participate.</p>
+                    <p className="text-green-800 font-medium">
+                      🎉 The event is currently live!
+                    </p>
+                    <p className="text-green-700 text-sm">
+                      Make sure you're at the venue to participate.
+                    </p>
                   </div>
                 )}
               </div>
@@ -450,5 +520,5 @@ export function VirtualEventPage({ eventId, onBack }: VirtualEventPageProps) {
         )}
       </div>
     </div>
-  )
+  );
 }

@@ -116,7 +116,10 @@ export function HomePage({
               registrationCount,
             };
           } catch (error) {
-            console.error(`Error fetching tickets for event ${event.id}:`, error);
+            console.error(
+              `Error fetching tickets for event ${event.id}:`,
+              error
+            );
             return {
               ...event,
               registrationCount: 0,
@@ -128,12 +131,20 @@ export function HomePage({
       // Sort events for featured selection
       // Priority: 1) Recent events (within 30 days), 2) High registration count, 3) Date proximity
       const now = new Date();
-      const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+      const thirtyDaysFromNow = new Date(
+        now.getTime() + 30 * 24 * 60 * 60 * 1000
+      );
 
       eventsWithStats.sort((a, b) => {
         // Calculate days until event
-        const daysUntilA = Math.max(0, (a.date.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-        const daysUntilB = Math.max(0, (b.date.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+        const daysUntilA = Math.max(
+          0,
+          (a.date.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+        );
+        const daysUntilB = Math.max(
+          0,
+          (b.date.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+        );
 
         // Score calculation: registration weight + recency weight
         // Higher registration count = higher score

@@ -1,39 +1,46 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { useAuth } from "@/contexts/AuthContext"
-import { doc, getDoc, collection, query, where, getDocs } from "firebase/firestore"
-import { db } from "@/lib/firebase"
-import type { Event, Ticket, Donation } from "@/types"
-import { ArrowLeft, Users, DollarSign, BarChart3, QrCode } from "lucide-react"
-import { format } from "date-fns"
-import { QRScanner } from "../checkin/QRScanner"
-import { LiveStreamViewer } from "../virtual/LiveStreamViewer"
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useAuth } from "@/contexts/AuthContext";
+import {
+  doc,
+  getDoc,
+  collection,
+  query,
+  where,
+  getDocs,
+} from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import type { Event, Ticket, Donation } from "@/types";
+import { ArrowLeft, Users, DollarSign, BarChart3, QrCode } from "lucide-react";
+import { format } from "date-fns";
+import { QRScanner } from "../checkin/QRScanner";
+import { LiveStreamViewer } from "../virtual/LiveStreamViewer";
 
 interface EventDetailsPageProps {
-  eventId: string
-  onBack: () => void
+  eventId: string;
+  onBack: () => void;
 }
 
 export function EventDetailsPage({ eventId, onBack }: EventDetailsPageProps) {
-  const { user } = useAuth()
-  const [event, setEvent] = useState<Event | null>(null)
-  const [tickets, setTickets] = useState<Ticket[]>([])
-  const [donations, setDonations] = useState<Donation[]>([])
-  const [loading, setLoading] = useState(true)
+  const { user } = useAuth();
+  const [event, setEvent] = useState<Event | null>(null);
+  const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [donations, setDonations] = useState<Donation[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchEventDetails()
-  }, [eventId])
+    fetchEventDetails();
+  }, [eventId]);
 
   const fetchEventDetails = async () => {
     try {
       // Fetch event
-      const eventDoc = await getDoc(doc(db, "events", eventId))
+      const eventDoc = await getDoc(doc(db, "events", eventId));
       if (eventDoc.exists()) {
         const eventData = {
           id: eventDoc.id,
@@ -41,41 +48,49 @@ export function EventDetailsPage({ eventId, onBack }: EventDetailsPageProps) {
           date: eventDoc.data().date.toDate(),
           createdAt: eventDoc.data().createdAt.toDate(),
           registrationCount: 0, // Default value for consistency
-        } as Event
-        setEvent(eventData)
+        } as Event;
+        setEvent(eventData);
       }
 
       // Fetch tickets - simplified query
-      const ticketsQuery = query(collection(db, "tickets"), where("eventId", "==", eventId))
-      const ticketsSnapshot = await getDocs(ticketsQuery)
+      const ticketsQuery = query(
+        collection(db, "tickets"),
+        where("eventId", "==", eventId)
+      );
+      const ticketsSnapshot = await getDocs(ticketsQuery);
       const ticketsData = ticketsSnapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
         createdAt: doc.data().createdAt.toDate(),
-      })) as Ticket[]
+      })) as Ticket[];
 
       // Sort tickets in memory
-      ticketsData.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
-      setTickets(ticketsData)
+      ticketsData.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+      setTickets(ticketsData);
 
       // Fetch donations - simplified query
-      const donationsQuery = query(collection(db, "donations"), where("eventId", "==", eventId))
-      const donationsSnapshot = await getDocs(donationsQuery)
+      const donationsQuery = query(
+        collection(db, "donations"),
+        where("eventId", "==", eventId)
+      );
+      const donationsSnapshot = await getDocs(donationsQuery);
       const donationsData = donationsSnapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
         createdAt: doc.data().createdAt.toDate(),
-      })) as Donation[]
+      })) as Donation[];
 
       // Sort donations in memory
-      donationsData.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
-      setDonations(donationsData)
+      donationsData.sort(
+        (a, b) => b.createdAt.getTime() - a.createdAt.getTime()
+      );
+      setDonations(donationsData);
     } catch (error) {
-      console.error("Error fetching event details:", error)
+      console.error("Error fetching event details:", error);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   if (loading) {
     return (
@@ -85,7 +100,7 @@ export function EventDetailsPage({ eventId, onBack }: EventDetailsPageProps) {
           <p>Loading event details...</p>
         </div>
       </div>
-    )
+    );
   }
 
   if (!event) {
@@ -96,12 +111,18 @@ export function EventDetailsPage({ eventId, onBack }: EventDetailsPageProps) {
           <Button onClick={onBack}>Go Back</Button>
         </div>
       </div>
-    )
+    );
   }
 
-  const checkedInCount = tickets.filter((t) => t.checkedIn).length
-  const totalRevenue = tickets.reduce((sum, ticket) => sum + (event.ticketPrice || 0), 0)
-  const totalDonations = donations.reduce((sum, donation) => sum + donation.amount, 0)
+  const checkedInCount = tickets.filter((t) => t.checkedIn).length;
+  const totalRevenue = tickets.reduce(
+    (sum, ticket) => sum + (event.ticketPrice || 0),
+    0
+  );
+  const totalDonations = donations.reduce(
+    (sum, donation) => sum + donation.amount,
+    0
+  );
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -115,13 +136,21 @@ export function EventDetailsPage({ eventId, onBack }: EventDetailsPageProps) {
                 Back to Dashboard
               </Button>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">{event.title}</h1>
+                <h1 className="text-2xl font-bold text-gray-900">
+                  {event.title}
+                </h1>
                 <p className="text-gray-600">
                   {format(event.date, "MMM dd, yyyy")} at {event.time}
                 </p>
               </div>
             </div>
-            <Badge className={event.status === "live" ? "bg-green-100 text-green-800" : "bg-blue-100 text-blue-800"}>
+            <Badge
+              className={
+                event.status === "live"
+                  ? "bg-green-100 text-green-800"
+                  : "bg-blue-100 text-blue-800"
+              }
+            >
               {event.status}
             </Badge>
           </div>
@@ -136,8 +165,12 @@ export function EventDetailsPage({ eventId, onBack }: EventDetailsPageProps) {
               <div className="flex items-center">
                 <Users className="w-8 h-8 text-blue-600" />
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Registered</p>
-                  <p className="text-2xl font-bold text-gray-900">{tickets.length}</p>
+                  <p className="text-sm font-medium text-gray-600">
+                    Registered
+                  </p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {tickets.length}
+                  </p>
                 </div>
               </div>
             </CardContent>
@@ -148,8 +181,12 @@ export function EventDetailsPage({ eventId, onBack }: EventDetailsPageProps) {
               <div className="flex items-center">
                 <QrCode className="w-8 h-8 text-green-600" />
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Checked In</p>
-                  <p className="text-2xl font-bold text-gray-900">{checkedInCount}</p>
+                  <p className="text-sm font-medium text-gray-600">
+                    Checked In
+                  </p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {checkedInCount}
+                  </p>
                 </div>
               </div>
             </CardContent>
@@ -161,7 +198,9 @@ export function EventDetailsPage({ eventId, onBack }: EventDetailsPageProps) {
                 <DollarSign className="w-8 h-8 text-yellow-600" />
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">Revenue</p>
-                  <p className="text-2xl font-bold text-gray-900">${totalRevenue}</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    ${totalRevenue}
+                  </p>
                 </div>
               </div>
             </CardContent>
@@ -173,7 +212,9 @@ export function EventDetailsPage({ eventId, onBack }: EventDetailsPageProps) {
                 <BarChart3 className="w-8 h-8 text-purple-600" />
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">Donations</p>
-                  <p className="text-2xl font-bold text-gray-900">${totalDonations}</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    ${totalDonations}
+                  </p>
                 </div>
               </div>
             </CardContent>
@@ -186,7 +227,9 @@ export function EventDetailsPage({ eventId, onBack }: EventDetailsPageProps) {
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="attendees">Attendees</TabsTrigger>
             <TabsTrigger value="checkin">Check-in</TabsTrigger>
-            {event.isVirtual && <TabsTrigger value="stream">Live Stream</TabsTrigger>}
+            {event.isVirtual && (
+              <TabsTrigger value="stream">Live Stream</TabsTrigger>
+            )}
           </TabsList>
 
           <TabsContent value="overview">
@@ -197,20 +240,34 @@ export function EventDetailsPage({ eventId, onBack }: EventDetailsPageProps) {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div>
-                    <label className="text-sm font-medium text-gray-600">Description</label>
+                    <label className="text-sm font-medium text-gray-600">
+                      Description
+                    </label>
                     <p className="text-gray-900">{event.description}</p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-600">Type</label>
+                    <label className="text-sm font-medium text-gray-600">
+                      Type
+                    </label>
                     <p className="text-gray-900 capitalize">{event.type}</p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-600">Location</label>
-                    <p className="text-gray-900">{event.isVirtual ? "Virtual Event" : event.location}</p>
+                    <label className="text-sm font-medium text-gray-600">
+                      Location
+                    </label>
+                    <p className="text-gray-900">
+                      {event.isVirtual ? "Virtual Event" : event.location}
+                    </p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-600">Ticket Price</label>
-                    <p className="text-gray-900">{event.ticketPrice === 0 ? "Free" : `$${event.ticketPrice}`}</p>
+                    <label className="text-sm font-medium text-gray-600">
+                      Ticket Price
+                    </label>
+                    <p className="text-gray-900">
+                      {event.ticketPrice === 0
+                        ? "Free"
+                        : `$${event.ticketPrice}`}
+                    </p>
                   </div>
                 </CardContent>
               </Card>
@@ -225,21 +282,32 @@ export function EventDetailsPage({ eventId, onBack }: EventDetailsPageProps) {
                       .slice(-5)
                       .reverse()
                       .map((ticket) => (
-                        <div key={ticket.id} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                        <div
+                          key={ticket.id}
+                          className="flex items-center justify-between p-2 bg-gray-50 rounded"
+                        >
                           <div>
                             <p className="text-sm font-medium">
-                              {ticket.registrationData?.firstName} {ticket.registrationData?.lastName}
+                              {ticket.registrationData?.firstName}{" "}
+                              {ticket.registrationData?.lastName}
                             </p>
                             <p className="text-xs text-gray-500">
-                              Registered {format(ticket.createdAt, "MMM dd, HH:mm")}
+                              Registered{" "}
+                              {format(ticket.createdAt, "MMM dd, HH:mm")}
                             </p>
                           </div>
-                          <Badge variant={ticket.checkedIn ? "default" : "secondary"}>
+                          <Badge
+                            variant={ticket.checkedIn ? "default" : "secondary"}
+                          >
                             {ticket.checkedIn ? "Checked In" : "Registered"}
                           </Badge>
                         </div>
                       ))}
-                    {tickets.length === 0 && <p className="text-gray-500 text-center py-4">No registrations yet</p>}
+                    {tickets.length === 0 && (
+                      <p className="text-gray-500 text-center py-4">
+                        No registrations yet
+                      </p>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -254,29 +322,41 @@ export function EventDetailsPage({ eventId, onBack }: EventDetailsPageProps) {
               <CardContent>
                 <div className="space-y-2">
                   {tickets.map((ticket) => (
-                    <div key={ticket.id} className="flex items-center justify-between p-3 border rounded-lg">
+                    <div
+                      key={ticket.id}
+                      className="flex items-center justify-between p-3 border rounded-lg"
+                    >
                       <div className="flex-1">
                         <div className="flex items-center space-x-4">
                           <div>
                             <p className="font-medium">
-                              {ticket.registrationData?.firstName} {ticket.registrationData?.lastName}
+                              {ticket.registrationData?.firstName}{" "}
+                              {ticket.registrationData?.lastName}
                             </p>
-                            <p className="text-sm text-gray-600">{ticket.registrationData?.email}</p>
+                            <p className="text-sm text-gray-600">
+                              {ticket.registrationData?.email}
+                            </p>
                           </div>
                         </div>
                       </div>
                       <div className="flex items-center space-x-2">
-                        <Badge variant={ticket.checkedIn ? "default" : "secondary"}>
+                        <Badge
+                          variant={ticket.checkedIn ? "default" : "secondary"}
+                        >
                           {ticket.checkedIn ? "Checked In" : "Registered"}
                         </Badge>
-                        <span className="text-xs text-gray-500">{format(ticket.createdAt, "MMM dd")}</span>
+                        <span className="text-xs text-gray-500">
+                          {format(ticket.createdAt, "MMM dd")}
+                        </span>
                       </div>
                     </div>
                   ))}
                   {tickets.length === 0 && (
                     <div className="text-center py-8">
                       <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                      <p className="text-gray-600">No attendees registered yet</p>
+                      <p className="text-gray-600">
+                        No attendees registered yet
+                      </p>
                     </div>
                   )}
                 </div>
@@ -296,5 +376,5 @@ export function EventDetailsPage({ eventId, onBack }: EventDetailsPageProps) {
         </Tabs>
       </div>
     </div>
-  )
+  );
 }
