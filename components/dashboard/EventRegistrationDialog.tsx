@@ -31,6 +31,8 @@ import {
 } from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
 import { Switch } from "@/components/ui/switch";
+import { storage } from "@/lib/firebase";
+import { ref, uploadBytes, getDownloadURL, uploadBytesResumable } from "firebase/storage";
 
 interface EventRegistrationDialogProps {
   event: Event;
@@ -61,6 +63,13 @@ export function EventRegistrationDialog({
   });
   const [donationAmount, setDonationAmount] = useState(0);
   const [useAutofill, setUseAutofill] = useState(false);
+  const [idProofFile, setIdProofFile] = useState<File | null>(null);
+  const [idProofUrl, setIdProofUrl] = useState<string>("");
+  const [idProofUploading, setIdProofUploading] = useState(false);
+  const [idProofUploadProgress, setIdProofUploadProgress] = useState<number>(0);
+  const [idProofError, setIdProofError] = useState<string>("");
+
+  const allowedTypes = ["image/jpeg", "image/png", "image/jpg", "application/pdf"];
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -162,7 +171,10 @@ export function EventRegistrationDialog({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
-
+    if (!idProofUrl) {
+      setIdProofError("Please upload a valid ID Proof before registering.");
+      return;
+    }
     setLoading(true);
     try {
       // Save user profile if they want autofill enabled
@@ -182,7 +194,7 @@ export function EventRegistrationDialog({
         attendeeUid: user.uid,
         qrCode: generateQRCode(),
         checkedIn: false,
-        registrationData: formData,
+        registrationData: { ...formData, idProofUrl },
         discountCode: discountCode.trim() || null,
         originalPrice: event.ticketPrice,
         finalPrice: calculatedPrice,
@@ -191,6 +203,62 @@ export function EventRegistrationDialog({
       };
 
       await addDoc(collection(db, "tickets"), ticketData);
+
+      // Send WhatsApp ticket details if phone number is provided
+      if (formData.phone && formData.phone.length > 0) {
+        const to = formData.phone.startsWith('whatsapp:') ? formData.phone : `whatsapp:${formData.phone}`;
+        const ticketId = ticketData.qrCode;
+        const ticketLink = `${window.location.origin}/my-tickets/${ticketId}`;
+        const message = `\n📣 Greetings from EventHub!\nYou're all set for ${event.title} 🎉\n\n🗓️ Date: ${format(event.date, "MMM dd, yyyy")}\n🕒 Time: ${event.time}\n📍 Venue: ${event.isVirtual ? "Virtual Event" : event.location}\n\n🎟️ Ticket ID: ${ticketId}\n🔳 QR Code: ${ticketId}\n\n🔗 View your ticket: ${ticketLink}\n\n🧾 Need Help? Contact us at support@eventhub.com\n\nThanks for registering with EventHub — we'll see you at the event! 🎶\n`;
+        try {
+          await fetch('/api/send-whatsapp', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ to, body: message })
+          });
+        } catch (err) {
+          console.error('WhatsApp notification failed:', err);
+        }
+      }
+
+      // Send email confirmation if email is provided
+      if (formData.email && formData.email.length > 0) {
+        const ticketId = ticketData.qrCode;
+        const ticketLink = `${window.location.origin}/my-tickets/${ticketId}`;
+        const subject = `Your Ticket for ${event.title}`;
+        const emailText = `\n📣 Greetings from EventHub!\nYou're all set for ${event.title} 🎉\n\n🗓️ Date: ${format(event.date, "MMM dd, yyyy")}\n🕒 Time: ${event.time}\n📍 Venue: ${event.isVirtual ? "Virtual Event" : event.location}\n\n🎟️ Ticket ID: ${ticketId}\n🔳 QR Code: ${ticketId}\n\n🔗 View your ticket: ${ticketLink}\n\n🧾 Need Help? Contact us at support@eventhub.com\n\nThanks for registering with EventHub — we'll see you at the event! 🎶\n`;
+        const emailHtml = `
+          <div style="font-family: Arial, sans-serif; color: #222;">
+            <h2 style="color:#4F46E5;">📣 Greetings from EventHub!</h2>
+            <p>You're all set for <b>${event.title}</b> 🎉</p>
+            <p>
+              <b>🗓️ Date:</b> ${format(event.date, "MMM dd, yyyy")}<br>
+              <b>🕒 Time:</b> ${event.time}<br>
+              <b>📍 Venue:</b> ${event.isVirtual ? "Virtual Event" : event.location}
+            </p>
+            <p>
+              <b>🎟️ Ticket ID:</b> ${ticketId}<br>
+              <b>🔳 QR Code Data:</b> ${ticketId}
+            </p>
+            <p>
+              <b>🔗 View your ticket:</b> <a href="${ticketLink}">${ticketLink}</a>
+            </p>
+            <p>
+              🧾 Need Help? Contact us at <a href="mailto:support@eventhub.com">support@eventhub.com</a>
+            </p>
+            <p style="color:#16A34A;">Thanks for registering with EventHub — we'll see you at the event! 🎶</p>
+          </div>
+        `;
+        try {
+          await fetch('/api/send-email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ to: formData.email, subject, text: emailText, html: emailHtml })
+          });
+        } catch (err) {
+          console.error('Email notification failed:', err);
+        }
+      }
 
       // Create donation if amount > 0
       if (donationAmount > 0) {
@@ -202,6 +270,30 @@ export function EventRegistrationDialog({
           createdAt: new Date(),
         };
         await addDoc(collection(db, "donations"), donationData);
+        // Send thank you email for donation
+        if (formData.email && formData.email.length > 0) {
+          const subject = `Thank You for Your Donation to ${event.title}`;
+          const emailText = `\n🙏 Thank you for your generous donation!\n\nEvent: ${event.title}\nAmount: $${donationAmount.toFixed(2)}\n\nYour support helps us make this event even better.\n\nIf you have any questions, contact us at support@eventhub.com.\n\nWith gratitude,\nThe EventHub Team`;
+          const emailHtml = `
+            <div style="font-family: Arial, sans-serif; color: #222;">
+              <h2 style="color:#16A34A;">🙏 Thank You for Your Donation!</h2>
+              <p>We appreciate your support for <b>${event.title}</b>.</p>
+              <p><b>Amount:</b> $${donationAmount.toFixed(2)}</p>
+              <p>Your contribution helps us make this event even better for everyone.</p>
+              <p>If you have any questions, contact us at <a href="mailto:support@eventhub.com">support@eventhub.com</a>.</p>
+              <p style="color:#4F46E5;">With gratitude,<br/>The EventHub Team</p>
+            </div>
+          `;
+          try {
+            await fetch('/api/send-email', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ to: formData.email, subject, text: emailText, html: emailHtml })
+            });
+          } catch (err) {
+            console.error('Donation thank you email failed:', err);
+          }
+        }
       }
 
       setShowThankYou(true);
@@ -283,6 +375,64 @@ export function EventRegistrationDialog({
     }
   };
 
+  const handleIdProofChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    setIdProofError("");
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!allowedTypes.includes(file.type)) {
+      setIdProofError("Unsupported file format. Please upload JPG, PNG, or PDF files only.");
+      setIdProofFile(null);
+      setIdProofUrl("");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setIdProofError("File too large. Please select a file smaller than 5MB.");
+      setIdProofFile(null);
+      setIdProofUrl("");
+      return;
+    }
+    setIdProofUploading(true);
+    setIdProofUploadProgress(0);
+    try {
+      const storagePath = `uploads/id-proofs/${user?.uid || "anonymous"}/${Date.now()}_${file.name}`;
+      const storageRef = ref(storage, storagePath);
+      const uploadTask = uploadBytesResumable(storageRef, file);
+      uploadTask.on(
+        "state_changed",
+        (snapshot) => {
+          const progress = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
+          setIdProofUploadProgress(progress);
+        },
+        (error) => {
+          setIdProofError("Upload failed. Could not upload ID proof.");
+          setIdProofFile(null);
+          setIdProofUrl("");
+          setIdProofUploading(false);
+        },
+        async () => {
+          const url = await getDownloadURL(uploadTask.snapshot.ref);
+          setIdProofUrl(url);
+          setIdProofFile(file);
+          setIdProofUploading(false);
+          setIdProofUploadProgress(100);
+          toast({ title: "ID Proof Uploaded", description: file.name });
+        }
+      );
+    } catch (err) {
+      setIdProofError("Upload failed. Could not upload ID proof.");
+      setIdProofFile(null);
+      setIdProofUrl("");
+      setIdProofUploading(false);
+    }
+  };
+
+  const handleRemoveIdProof = () => {
+    setIdProofFile(null);
+    setIdProofUrl("");
+    setIdProofUploadProgress(0);
+    setIdProofError("");
+  };
+
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -321,6 +471,16 @@ export function EventRegistrationDialog({
                   <CheckCircle className="w-4 h-4 text-green-500 mr-2 flex-shrink-0" />
                   <span>Add the event to your calendar</span>
                 </div>
+                {formData.phone && (
+                  <div className="flex items-center justify-center bg-green-50 border border-green-200 rounded-lg p-3 mt-4">
+                    <svg className="w-5 h-5 text-green-600 mr-2" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span className="text-green-800 font-medium">
+                      Ticket details have been sent to your WhatsApp number: <span className="font-mono">{formData.phone}</span>
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -378,22 +538,11 @@ export function EventRegistrationDialog({
           // Registration Form
           <>
             <DialogHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <DialogTitle>Register for {event.title}</DialogTitle>
-                  <DialogDescription>
-                    Complete your registration for this event
-                  </DialogDescription>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={shareEvent}
-                  className="flex items-center space-x-2"
-                >
-                  <Share2 className="w-4 h-4" />
-                  <span className="hidden sm:inline">Share</span>
-                </Button>
+              <div className="flex flex-col">
+                <DialogTitle>Register for {event.title}</DialogTitle>
+                <DialogDescription>
+                  Complete your registration for this event
+                </DialogDescription>
               </div>
             </DialogHeader>
 
@@ -490,6 +639,43 @@ export function EventRegistrationDialog({
                 />
               </div>
 
+              <div className="space-y-2">
+                <Label htmlFor="idProof" className="cursor-pointer">Upload ID Proof (image or PDF, max 5MB)</Label>
+                <div className="relative w-full">
+                  <Input
+                    id="idProof"
+                    type="file"
+                    accept=".jpg,.jpeg,.png,application/pdf"
+                    onChange={handleIdProofChange}
+                    disabled={idProofUploading}
+                    className="block w-full cursor-pointer file:cursor-pointer file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-gray-100 file:text-gray-700 hover:file:bg-blue-100 active:file:bg-blue-200 transition-colors"
+                    style={{ padding: 0 }}
+                  />
+                </div>
+                {idProofError && <p className="text-sm text-red-600">{idProofError}</p>}
+                {idProofUploading && (
+                  <p className="text-sm text-blue-500">Uploading... {idProofUploadProgress}%</p>
+                )}
+                {idProofFile && !idProofUploading && idProofUrl && (
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 mt-2">
+                    <div className="flex-1 flex items-center gap-2">
+                      <span className="text-green-600 font-medium">{idProofFile.name}</span>
+                      <span className="text-xs text-gray-500">({idProofFile.type.replace("image/","").replace("application/","").toUpperCase()})</span>
+                    </div>
+                    <Button type="button" variant="outline" size="sm" onClick={handleRemoveIdProof} className="ml-2">Remove / Replace File</Button>
+                  </div>
+                )}
+                {idProofFile && !idProofUploading && idProofUrl && (
+                  <div className="mt-2">
+                    {idProofFile.type.startsWith("image/") ? (
+                      <img src={idProofUrl} alt="ID Proof Preview" className="w-32 h-32 object-contain rounded border mx-auto sm:mx-0" />
+                    ) : idProofFile.type === "application/pdf" ? (
+                      <iframe src={idProofUrl} title="ID Proof PDF Preview" className="w-full h-40 border rounded" />
+                    ) : null}
+                  </div>
+                )}
+              </div>
+
               {/* Save Information Option */}
               <div className="flex items-center space-x-2 p-3 bg-green-50 rounded-lg">
                 <Switch
@@ -555,23 +741,31 @@ export function EventRegistrationDialog({
                 </p>
               </div>
 
-              <div className="flex justify-end space-x-4 pt-4">
+              <div className="flex justify-between items-center pt-4">
                 <Button
-                  type="button"
                   variant="outline"
-                  onClick={() => onOpenChange(false)}
+                  size="sm"
+                  onClick={shareEvent}
+                  className="flex items-center space-x-2"
+                  type="button"
                 >
-                  Cancel
+                  <Share2 className="w-4 h-4" />
+                  <span className="hidden sm:inline">Share</span>
                 </Button>
-                <Button type="submit" disabled={loading}>
-                  {loading
-                    ? "Registering..."
-                    : `Register ${
-                        calculatedPrice > 0
-                          ? `($${calculatedPrice.toFixed(2)})`
-                          : "(Free)"
-                      }`}
-                </Button>
+                <div className="flex gap-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => onOpenChange(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={loading || idProofUploading || !idProofUrl}>
+                    {loading
+                      ? "Registering..."
+                      : `Register ${calculatedPrice > 0 ? `($${calculatedPrice.toFixed(2)})` : "(Free)"}`}
+                  </Button>
+                </div>
               </div>
             </form>
           </>
