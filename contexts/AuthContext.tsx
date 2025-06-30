@@ -123,12 +123,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(userData);
   };
 
-  const updateUserProfile = async (profileData: Partial<UserProfile>) => {
+  const updateUserProfile = async (
+    profileData: Partial<UserProfile> & { profileImageBase64?: string | null }
+  ) => {
     if (!firebaseUser || !user) return;
+
+    // Extract profileImageBase64 from profileData
+    const { profileImageBase64, ...profileFields } = profileData;
 
     const updatedProfile: UserProfile = {
       ...user.profile,
-      ...profileData,
+      ...profileFields,
       updatedAt: new Date(),
     };
 
@@ -136,8 +141,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       profile: updatedProfile,
     };
 
+    // If profileImageBase64 is explicitly provided (even if null), update it
+    if ("profileImageBase64" in profileData) {
+      userData.profileImageBase64 = profileImageBase64 || null;
+    }
+
     await setDoc(doc(db, "users", firebaseUser.uid), userData, { merge: true });
-    setUser({ ...user, profile: updatedProfile });
+
+    // Update local user state
+    setUser({
+      ...user,
+      profile: updatedProfile,
+      ...("profileImageBase64" in profileData
+        ? { profileImageBase64: profileImageBase64 || null }
+        : {}),
+    });
   };
 
   const getUserProfile = (): UserProfile | null => {

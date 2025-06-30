@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,8 +16,16 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
-import { User, Save, Settings } from "lucide-react";
+import {
+  User,
+  Save,
+  Settings,
+  Camera,
+  Trash2,
+  AlertCircle,
+} from "lucide-react";
 import type { UserProfile } from "@/types";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 interface UserProfileDialogProps {
   open: boolean;
@@ -30,6 +38,9 @@ export function UserProfileDialog({
 }: UserProfileDialogProps) {
   const { user, updateUserProfile, getUserProfile } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [profileImageFile, setProfileImageFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState<Partial<UserProfile>>({
     firstName: "",
     lastName: "",
@@ -56,6 +67,7 @@ export function UserProfileDialog({
       if (profile) {
         setFormData(profile);
       }
+      setProfileImage(user.profileImageBase64 || null);
     }
   }, [open, user, getUserProfile]);
 
@@ -63,12 +75,58 @@ export function UserProfileDialog({
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file size (1MB = 1048576 bytes)
+    if (file.size > 1048576) {
+      toast({
+        title: "File too large",
+        description: "Please select an image smaller than 1MB",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Convert to base64
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const base64String = event.target?.result as string;
+      setProfileImage(base64String);
+      setProfileImageFile(file);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveImage = () => {
+    setProfileImage(null);
+    setProfileImageFile(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const triggerFileInput = () => {
+    fileInputRef.current?.click();
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      await updateUserProfile(formData);
+      // Create updated profile data including the profile image
+      const updatedData: Partial<User> = {
+        ...formData,
+      };
+
+      // If we have a new profile image, include it in the update
+      if (profileImage !== user?.profileImageBase64) {
+        updatedData.profileImageBase64 = profileImage;
+      }
+
+      await updateUserProfile(updatedData);
       toast({
         title: "Profile Updated",
         description: "Your profile information has been saved successfully.",
@@ -100,6 +158,83 @@ export function UserProfileDialog({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Profile Photo */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Profile Photo</CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col items-center sm:flex-row sm:items-start gap-6">
+              <div className="relative">
+                <Avatar className="w-32 h-32 border-2 border-gray-200">
+                  {profileImage ? (
+                    <AvatarImage src={profileImage} alt="Profile" />
+                  ) : (
+                    <AvatarFallback className="text-3xl bg-blue-100">
+                      {user?.displayName?.charAt(0) || "U"}
+                    </AvatarFallback>
+                  )}
+                </Avatar>
+
+                {profileImage && (
+                  <button
+                    type="button"
+                    onClick={handleRemoveImage}
+                    className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600 transition-colors"
+                    aria-label="Remove profile image"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <h3 className="font-medium">Profile Picture</h3>
+                  <p className="text-sm text-gray-500">
+                    Upload a photo to personalize your profile
+                  </p>
+                </div>
+
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageChange}
+                  className="hidden"
+                />
+
+                <div className="flex flex-wrap gap-3">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={triggerFileInput}
+                    className="flex items-center gap-2"
+                  >
+                    <Camera className="w-4 h-4" />
+                    Upload Photo
+                  </Button>
+
+                  {profileImage && (
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      onClick={handleRemoveImage}
+                      className="flex items-center gap-2"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      Remove
+                    </Button>
+                  )}
+                </div>
+
+                <p className="text-xs text-gray-500 flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3" />
+                  Maximum file size: 1MB
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Personal Information */}
           <Card>
             <CardHeader>

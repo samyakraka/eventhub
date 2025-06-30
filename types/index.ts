@@ -1,8 +1,25 @@
 export interface UserProfile {
   bio?: string;
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
   organization?: string;
   website?: string;
   location?: string;
+  dateOfBirth?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
+  country?: string;
+  emergencyContact?: string;
+  dietaryRestrictions?: string;
+  accessibilityNeeds?: string;
+  company?: string;
+  jobTitle?: string;
+  autoFillEnabled?: boolean;
+  emailNotifications?: boolean;
+  smsNotifications?: boolean;
   preferences?: {
     notifications: boolean;
     emailUpdates: boolean;
@@ -18,7 +35,7 @@ export interface User {
   email: string;
   displayName: string;
   role?: "organizer" | "attendee"; // Make role optional initially
-  profileImageBase64?: string;
+  profileImageBase64?: string | null;
   profile?: UserProfile;
   createdAt: Date;
 }
