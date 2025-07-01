@@ -17,7 +17,7 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { collection, addDoc, query, where, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import type { Event } from "@/types";
+import type { Event, CustomForm } from "@/types";
 import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import {
@@ -31,8 +31,7 @@ import {
 } from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
 import { Switch } from "@/components/ui/switch";
-import { storage } from "@/lib/firebase";
-import { ref, uploadBytes, getDownloadURL, uploadBytesResumable } from "firebase/storage";
+import { CustomFormRenderer } from "./CustomFormRenderer";
 
 interface EventRegistrationDialogProps {
   event: Event;
@@ -53,6 +52,8 @@ export function EventRegistrationDialog({
   const [discountCode, setDiscountCode] = useState("");
   const [calculatedPrice, setCalculatedPrice] = useState(event.ticketPrice);
   const [discountAmount, setDiscountAmount] = useState(0);
+  const [customForm, setCustomForm] = useState<CustomForm | null>(null);
+  const [customFormData, setCustomFormData] = useState<Record<string, any>>({});
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -64,8 +65,46 @@ export function EventRegistrationDialog({
   const [donationAmount, setDonationAmount] = useState(0);
   const [useAutofill, setUseAutofill] = useState(false);
 
+  // Fetch custom form for this event
+  useEffect(() => {
+    const fetchCustomForm = async () => {
+      if (!event.id) return;
+      
+      try {
+        const q = query(
+          collection(db, "customForms"),
+          where("eventId", "==", event.id)
+        );
+        const querySnapshot = await getDocs(q);
+        
+        if (!querySnapshot.empty) {
+          const formDoc = querySnapshot.docs[0];
+          const formData = {
+            id: formDoc.id,
+            ...formDoc.data(),
+            createdAt: formDoc.data().createdAt.toDate(),
+            updatedAt: formDoc.data().updatedAt.toDate(),
+          } as CustomForm;
+          setCustomForm(formData);
+        }
+      } catch (error) {
+        console.error("Error fetching custom form:", error);
+      }
+    };
+
+    if (open && event.id) {
+      fetchCustomForm();
+    }
+  }, [open, event.id]);
+
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleCustomFormSubmit = (formData: Record<string, any>) => {
+    setCustomFormData(formData);
+    // Continue with registration process
+    handleRegistrationSubmit(formData);
   };
 
   const generateQRCode = () => {
@@ -161,14 +200,13 @@ export function EventRegistrationDialog({
     }
   }, [open, user, getUserProfile]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleRegistrationSubmit = async (registrationData: Record<string, any>) => {
     if (!user) return;
     
     setLoading(true);
     try {
-      // Save user profile if they want autofill enabled
-      if (useAutofill) {
+      // Save user profile if they want autofill enabled (only for default form)
+      if (!customForm && useAutofill) {
         const profileData = {
           firstName: formData.firstName,
           lastName: formData.lastName,
@@ -178,13 +216,13 @@ export function EventRegistrationDialog({
         await updateUserProfile(profileData);
       }
 
-      // Create ticket - remove idProofUrl from registrationData
+      // Create ticket with appropriate registration data
       const ticketData = {
         eventId: event.id,
         attendeeUid: user.uid,
         qrCode: generateQRCode(),
         checkedIn: false,
-        registrationData: { ...formData }, // Remove idProofUrl from here
+        registrationData: customForm ? registrationData : { ...formData },
         discountCode: discountCode.trim() || null,
         originalPrice: event.ticketPrice,
         finalPrice: calculatedPrice,
@@ -194,59 +232,78 @@ export function EventRegistrationDialog({
 
       await addDoc(collection(db, "tickets"), ticketData);
 
-      // Send WhatsApp ticket details if phone number is provided
-      if (formData.phone && formData.phone.length > 0) {
-        const to = formData.phone.startsWith('whatsapp:') ? formData.phone : `whatsapp:${formData.phone}`;
-        const ticketId = ticketData.qrCode;
-        const ticketLink = `${window.location.origin}/my-tickets/${ticketId}`;
-        const message = `\n📣 Greetings from EventHub!\nYou're all set for ${event.title} 🎉\n\n🗓️ Date: ${format(event.date, "MMM dd, yyyy")}\n🕒 Time: ${event.time}\n📍 Venue: ${event.isVirtual ? "Virtual Event" : event.location}\n\n🎟️ Ticket ID: ${ticketId}\n🔳 QR Code: ${ticketId}\n\n🔗 View your ticket: ${ticketLink}\n\n🧾 Need Help? Contact us at support@eventhub.com\n\nThanks for registering with EventHub — we'll see you at the event! 🎶\n`;
-        try {
-          await fetch('/api/send-whatsapp', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ to, body: message })
-          });
-        } catch (err) {
-          console.error('WhatsApp notification failed:', err);
+      // Update discount code usage if used
+      if (discountCode.trim() && event.discountEnabled) {
+        const q = query(
+          collection(db, "discountCodes"),
+          where("eventId", "==", event.id),
+          where("code", "==", discountCode.trim().toUpperCase())
+        );
+        const querySnapshot = await getDocs(q);
+        if (!querySnapshot.empty) {
+          const discountDoc = querySnapshot.docs[0];
+          // Note: In a real app, you'd update the usage count here
         }
       }
 
-      // Send email confirmation if email is provided
-      if (formData.email && formData.email.length > 0) {
-        const ticketId = ticketData.qrCode;
+      // Send WhatsApp notification if phone number is provided
+      if (registrationData.phone || formData.phone) {
+        const phoneNumber = registrationData.phone || formData.phone;
+        const ticketId = ticketData.qrCode; // Use QR code as ticketId for now (since addDoc returns nothing)
         const ticketLink = `${window.location.origin}/my-tickets/${ticketId}`;
-        const subject = `Your Ticket for ${event.title}`;
-        const emailText = `\n📣 Greetings from EventHub!\nYou're all set for ${event.title} 🎉\n\n🗓️ Date: ${format(event.date, "MMM dd, yyyy")}\n🕒 Time: ${event.time}\n📍 Venue: ${event.isVirtual ? "Virtual Event" : event.location}\n\n🎟️ Ticket ID: ${ticketId}\n🔳 QR Code: ${ticketId}\n\n🔗 View your ticket: ${ticketLink}\n\n🧾 Need Help? Contact us at support@eventhub.com\n\nThanks for registering with EventHub — we'll see you at the event! 🎶\n`;
+        const whatsappMessage = `📢 Greetings from EventHub!\n\nYou're all set for *${event.title}* 🎉\n\n📅 *Date:* ${format(event.date, "MMM dd, yyyy")}\n🕒 *Time:* ${event.time}\n📍 *Venue:* ${event.isVirtual ? "Virtual Event" : event.location}\n\n🎟️ *Ticket ID:* ${ticketId}\n🔳 *QR Code Data:* ${ticketId}\n\n🔗 *View your ticket:* ${ticketLink}\n\nNeed Help? Contact us at support@eventhub.com\n\nThanks for registering with EventHub — we'll see you at the event! 🎶`;
+        try {
+          await fetch("/api/send-whatsapp", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              to: `whatsapp:${phoneNumber}`,
+              body: whatsappMessage,
+            }),
+          });
+        } catch (error) {
+          console.error("Error sending WhatsApp notification:", error);
+        }
+      }
+
+      // Send Email confirmation if email is provided
+      if (registrationData.email || formData.email) {
+        const email = registrationData.email || formData.email;
+        const ticketId = ticketData.qrCode; // Use QR code as ticketId for now
+        const ticketLink = `${window.location.origin}/my-tickets/${ticketId}`;
         const emailHtml = `
-          <div style="font-family: Arial, sans-serif; color: #222;">
-            <h2 style="color:#4F46E5;">📣 Greetings from EventHub!</h2>
+          <div style="font-family: Arial, sans-serif;">
+            <h2 style="color:#3B82F6;">📢 Greetings from <span style='background: #FFEB3B; color: #222; padding: 2px 6px; border-radius: 4px;'>EventHub</span>!</h2>
             <p>You're all set for <b>${event.title}</b> 🎉</p>
-            <p>
-              <b>🗓️ Date:</b> ${format(event.date, "MMM dd, yyyy")}<br>
-              <b>🕒 Time:</b> ${event.time}<br>
-              <b>📍 Venue:</b> ${event.isVirtual ? "Virtual Event" : event.location}
-            </p>
-            <p>
-              <b>🎟️ Ticket ID:</b> ${ticketId}<br>
-              <b>🔳 QR Code Data:</b> ${ticketId}
-            </p>
-            <p>
-              <b>🔗 View your ticket:</b> <a href="${ticketLink}">${ticketLink}</a>
-            </p>
-            <p>
-              🧾 Need Help? Contact us at <a href="mailto:support@eventhub.com">support@eventhub.com</a>
-            </p>
-            <p style="color:#16A34A;">Thanks for registering with EventHub — we'll see you at the event! 🎶</p>
+            <ul style="list-style:none; padding:0;">
+              <li>📅 <b>Date:</b> ${format(event.date, "MMM dd, yyyy")}</li>
+              <li>🕒 <b>Time:</b> ${event.time}</li>
+              <li>📍 <b>Venue:</b> ${event.isVirtual ? "Virtual Event" : event.location}</li>
+            </ul>
+            <p>🎟️ <b>Ticket ID:</b> ${ticketId}<br/>
+            🔳 <b>QR Code Data:</b> ${ticketId}</p>
+            <p>🔗 <b>View your ticket:</b> <a href="${ticketLink}">${ticketLink}</a></p>
+            <p>Need Help? Contact us at <a href="mailto:support@eventhub.com">support@eventhub.com</a></p>
+            <p style="color: #22c55e;">Thanks for registering with <span style='background: #FFEB3B; color: #222; padding: 2px 6px; border-radius: 4px;'>EventHub</span> — we'll see you at the event! 🎶</p>
           </div>
         `;
         try {
-          await fetch('/api/send-email', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ to: formData.email, subject, text: emailText, html: emailHtml })
+          await fetch("/api/send-email", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              to: email,
+              subject: `Your Ticket for ${event.title}`,
+              html: emailHtml,
+              text: `Greetings from EventHub!\n\nYou're all set for ${event.title} 🎉\n\nDate: ${format(event.date, "MMM dd, yyyy")}\nTime: ${event.time}\nVenue: ${event.isVirtual ? "Virtual Event" : event.location}\n\nTicket ID: ${ticketId}\nQR Code Data: ${ticketId}\n\nView your ticket: ${ticketLink}\n\nNeed Help? Contact us at support@eventhub.com\n\nThanks for registering with EventHub — we'll see you at the event! 🎶`,
+            }),
           });
-        } catch (err) {
-          console.error('Email notification failed:', err);
+        } catch (error) {
+          console.error("Error sending email confirmation:", error);
         }
       }
 
@@ -261,7 +318,8 @@ export function EventRegistrationDialog({
         };
         await addDoc(collection(db, "donations"), donationData);
         // Send thank you email for donation
-        if (formData.email && formData.email.length > 0) {
+        if ((registrationData.email || formData.email) && (registrationData.email || formData.email).length > 0) {
+          const email = registrationData.email || formData.email;
           const subject = `Thank You for Your Donation to ${event.title}`;
           const emailText = `\n🙏 Thank you for your generous donation!\n\nEvent: ${event.title}\nAmount: $${donationAmount.toFixed(2)}\n\nYour support helps us make this event even better.\n\nIf you have any questions, contact us at support@eventhub.com.\n\nWith gratitude,\nThe EventHub Team`;
           const emailHtml = `
@@ -278,7 +336,7 @@ export function EventRegistrationDialog({
             await fetch('/api/send-email', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ to: formData.email, subject, text: emailText, html: emailHtml })
+              body: JSON.stringify({ to: email, subject, text: emailText, html: emailHtml })
             });
           } catch (err) {
             console.error('Donation thank you email failed:', err);
@@ -299,6 +357,11 @@ export function EventRegistrationDialog({
     }
   };
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await handleRegistrationSubmit(formData);
+  };
+
   const shareEvent = async () => {
     const shareData = {
       title: event.title,
@@ -310,7 +373,6 @@ export function EventRegistrationDialog({
       try {
         await navigator.share(shareData);
       } catch (error) {
-        // Fallback to copying URL
         copyEventLink();
       }
     } else {
@@ -319,20 +381,16 @@ export function EventRegistrationDialog({
   };
 
   const copyEventLink = () => {
-    navigator.clipboard
-      .writeText(`${window.location.origin}/events/${event.id}`)
-      .then(() => {
-        toast({
-          title: "Link Copied!",
-          description: "Event link copied to clipboard",
-        });
+    navigator.clipboard.writeText(`${window.location.origin}/events/${event.id}`).then(() => {
+      toast({
+        title: "Link Copied!",
+        description: "Event link copied to clipboard",
       });
+    });
   };
 
   const handleClose = () => {
     setShowThankYou(false);
-    onOpenChange(false);
-    // Reset form
     setFormData({
       firstName: "",
       lastName: "",
@@ -341,44 +399,43 @@ export function EventRegistrationDialog({
       specialRequests: "",
       discountCode: "",
     });
+    setCustomFormData({});
     setDiscountCode("");
+    setCalculatedPrice(event.ticketPrice);
+    setDiscountAmount(0);
     setDonationAmount(0);
+    setUseAutofill(false);
+    onOpenChange(false);
   };
 
   const loadAutofillData = () => {
     const profile = getUserProfile();
     if (profile) {
+      setUseAutofill(true);
       setFormData((prev) => ({
         ...prev,
         firstName: profile.firstName || "",
         lastName: profile.lastName || "",
+        email: user?.email || "",
         phone: profile.phone || "",
-        specialRequests: `${profile.dietaryRestrictions || ""} ${
-          profile.accessibilityNeeds || ""
-        }`.trim(),
+        specialRequests:
+          profile.dietaryRestrictions || profile.accessibilityNeeds || "",
       }));
-      setUseAutofill(true);
-      toast({
-        title: "Profile Loaded",
-        description: "Your saved information has been filled in",
-      });
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         {showThankYou ? (
-          // Thank You Screen
           <div className="text-center py-8">
-            <div className="w-20 h-20 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6">
-              <CheckCircle className="w-10 h-10 text-white" />
+            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <CheckCircle className="w-8 h-8 text-green-600" />
             </div>
-
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">
-              Registration Successful! 🎉
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">
+              Registration Complete!
             </h2>
-            <p className="text-lg text-gray-600 mb-6">
+            <p className="text-gray-600 mb-8">
               You're all set for{" "}
               <span className="font-semibold text-gray-900">{event.title}</span>
             </p>
@@ -403,13 +460,13 @@ export function EventRegistrationDialog({
                   <CheckCircle className="w-4 h-4 text-green-500 mr-2 flex-shrink-0" />
                   <span>Add the event to your calendar</span>
                 </div>
-                {formData.phone && (
+                {(customFormData.phone || formData.phone) && (
                   <div className="flex items-center justify-center bg-green-50 border border-green-200 rounded-lg p-3 mt-4">
                     <svg className="w-5 h-5 text-green-600 mr-2" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                     </svg>
                     <span className="text-green-800 font-medium">
-                      Ticket details have been sent to your WhatsApp number: <span className="font-mono">{formData.phone}</span>
+                      Ticket details have been sent to your WhatsApp number: <span className="font-mono">{customFormData.phone || formData.phone}</span>
                     </span>
                   </div>
                 )}
@@ -500,171 +557,171 @@ export function EventRegistrationDialog({
               </div>
             </div>
 
-            {/* Autofill Option */}
-            {getUserProfile() && !useAutofill && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="font-medium text-blue-900">
-                      Use Saved Information
-                    </h4>
-                    <p className="text-sm text-blue-700">
-                      Fill in your details from your profile
+            {/* Custom Form or Default Form */}
+            {customForm ? (
+              <CustomFormRenderer
+                form={customForm}
+                onSubmit={handleCustomFormSubmit}
+                loading={loading}
+              />
+            ) : (
+              <>
+                {/* Autofill Option */}
+                {getUserProfile() && !useAutofill && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="font-medium text-blue-900">
+                          Use Saved Information
+                        </h4>
+                        <p className="text-sm text-blue-700">
+                          Fill in your details from your profile
+                        </p>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={loadAutofillData}
+                      >
+                        <Sparkles className="w-4 h-4 mr-2" />
+                        Autofill
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="firstName">First Name *</Label>
+                      <Input
+                        id="firstName"
+                        value={formData.firstName}
+                        onChange={(e) =>
+                          handleInputChange("firstName", e.target.value)
+                        }
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="lastName">Last Name *</Label>
+                      <Input
+                        id="lastName"
+                        value={formData.lastName}
+                        onChange={(e) =>
+                          handleInputChange("lastName", e.target.value)
+                        }
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email *</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) => handleInputChange("email", e.target.value)}
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="phone">Phone Number</Label>
+                    <Input
+                      id="phone"
+                      type="tel"
+                      value={formData.phone}
+                      onChange={(e) => handleInputChange("phone", e.target.value)}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="specialRequests">Special Requests</Label>
+                    <Textarea
+                      id="specialRequests"
+                      value={formData.specialRequests}
+                      onChange={(e) =>
+                        handleInputChange("specialRequests", e.target.value)
+                      }
+                      placeholder="Any dietary restrictions, accessibility needs, or special requests..."
+                      rows={3}
+                    />
+                  </div>
+
+                  {/* Discount Code Section */}
+                  {event.discountEnabled && (
+                    <div className="space-y-2">
+                      <Label htmlFor="discountCode">Discount Code (Optional)</Label>
+                      <Input
+                        id="discountCode"
+                        value={discountCode}
+                        onChange={(e) => setDiscountCode(e.target.value)}
+                        placeholder="Enter discount code"
+                      />
+                    </div>
+                  )}
+
+                  {/* Donation Section */}
+                  <div className="border-t pt-4">
+                    <Label htmlFor="donation">Optional Donation ($)</Label>
+                    <Input
+                      id="donation"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={donationAmount}
+                      onChange={(e) => setDonationAmount(Number(e.target.value))}
+                      placeholder="0.00"
+                    />
+                    <p className="text-sm text-gray-600 mt-1">
+                      Support this event with an optional donation
                     </p>
                   </div>
+
+                  {/* Price Summary */}
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-gray-600">Ticket Price:</span>
+                      <span className="font-medium">${event.ticketPrice.toFixed(2)}</span>
+                    </div>
+                    {discountAmount > 0 && (
+                      <div className="flex justify-between items-center mb-2 text-green-600">
+                        <span>Discount:</span>
+                        <span>-${discountAmount.toFixed(2)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between items-center pt-2 border-t">
+                      <span className="font-semibold">Total:</span>
+                      <span className="font-bold text-lg">
+                        ${calculatedPrice.toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Autofill Toggle */}
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      id="useAutofill"
+                      checked={useAutofill}
+                      onCheckedChange={setUseAutofill}
+                    />
+                    <Label htmlFor="useAutofill" className="text-sm">
+                      Save my information for future registrations
+                    </Label>
+                  </div>
+
                   <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={loadAutofillData}
+                    type="submit"
+                    className="w-full"
+                    disabled={loading}
                   >
-                    <Sparkles className="w-4 h-4 mr-2" />
-                    Autofill
+                    {loading ? "Processing..." : "Complete Registration"}
                   </Button>
-                </div>
-              </div>
+                </form>
+              </>
             )}
-
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="firstName">First Name *</Label>
-                  <Input
-                    id="firstName"
-                    value={formData.firstName}
-                    onChange={(e) =>
-                      handleInputChange("firstName", e.target.value)
-                    }
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="lastName">Last Name *</Label>
-                  <Input
-                    id="lastName"
-                    value={formData.lastName}
-                    onChange={(e) =>
-                      handleInputChange("lastName", e.target.value)
-                    }
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="email">Email *</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => handleInputChange("email", e.target.value)}
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="phone">Phone Number</Label>
-                <Input
-                  id="phone"
-                  type="tel"
-                  value={formData.phone}
-                  onChange={(e) => handleInputChange("phone", e.target.value)}
-                />
-              </div>
-
-              {/* Remove the ID Proof upload section */}
-
-              {/* Save Information Option */}
-              <div className="flex items-center space-x-2 p-3 bg-green-50 rounded-lg">
-                <Switch
-                  id="useAutofill"
-                  checked={useAutofill}
-                  onCheckedChange={setUseAutofill}
-                />
-                <Label htmlFor="useAutofill" className="text-sm">
-                  Save my information for future event registrations
-                </Label>
-              </div>
-
-              {event.discountEnabled && (
-                <div className="space-y-2">
-                  <Label htmlFor="discountCode">Discount Code (optional)</Label>
-                  <Input
-                    id="discountCode"
-                    value={discountCode}
-                    onChange={(e) => {
-                      setDiscountCode(e.target.value);
-                      setFormData((prev) => ({
-                        ...prev,
-                        discountCode: e.target.value,
-                      }));
-                    }}
-                    placeholder="Enter discount code"
-                  />
-                  {discountAmount > 0 && (
-                    <p className="text-sm text-green-600">
-                      Discount applied: -${discountAmount.toFixed(2)}
-                    </p>
-                  )}
-                </div>
-              )}
-
-              <div className="space-y-2">
-                <Label htmlFor="specialRequests">Special Requests</Label>
-                <Textarea
-                  id="specialRequests"
-                  value={formData.specialRequests}
-                  onChange={(e) =>
-                    handleInputChange("specialRequests", e.target.value)
-                  }
-                  placeholder="Any dietary restrictions, accessibility needs, etc."
-                  rows={3}
-                />
-              </div>
-
-              {/* Donation Section */}
-              <div className="border-t pt-4">
-                <Label htmlFor="donation">Optional Donation ($)</Label>
-                <Input
-                  id="donation"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={donationAmount}
-                  onChange={(e) => setDonationAmount(Number(e.target.value))}
-                  placeholder="0.00"
-                />
-                <p className="text-sm text-gray-600 mt-1">
-                  Support this event with an optional donation
-                </p>
-              </div>
-
-              <div className="flex justify-between items-center pt-4">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={shareEvent}
-                  className="flex items-center space-x-2"
-                  type="button"
-                >
-                  <Share2 className="w-4 h-4" />
-                  <span className="hidden sm:inline">Share</span>
-                </Button>
-                <div className="flex gap-4">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => onOpenChange(false)}
-                  >
-                    Cancel
-                  </Button>
-                  <Button type="submit" disabled={loading}>
-                    {loading
-                      ? "Registering..."
-                      : `Register ${calculatedPrice > 0 ? `($${calculatedPrice.toFixed(2)})` : "(Free)"}`}
-                  </Button>
-                </div>
-              </div>
-            </form>
           </>
         )}
       </DialogContent>
