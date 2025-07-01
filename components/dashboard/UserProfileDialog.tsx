@@ -16,15 +16,8 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
-import {
-  User,
-  Save,
-  Settings,
-  Camera,
-  Trash2,
-  AlertCircle,
-} from "lucide-react";
-import type { UserProfile } from "@/types";
+import { Save, Settings, Camera, Trash2, AlertCircle, User as UserIcon } from "lucide-react";
+import type { User, UserProfile } from "@/types";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 interface UserProfileDialogProps {
@@ -72,7 +65,7 @@ export function UserProfileDialog({
   }, [open, user, getUserProfile]);
 
   const handleInputChange = (field: string, value: any) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+    setFormData((prev: Partial<UserProfile>) => ({ ...prev, [field]: value }));
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -148,7 +141,7 @@ export function UserProfileDialog({
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center">
-            <User className="w-5 h-5 mr-2" />
+            <UserIcon className="w-5 h-5 mr-2" />
             My Profile
           </DialogTitle>
           <DialogDescription>
