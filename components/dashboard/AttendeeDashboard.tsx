@@ -34,7 +34,7 @@ import {
   User,
   Copy,
 } from "lucide-react";
-import { format } from "date-fns";
+import { format, isBefore, startOfDay } from "date-fns";
 import { EventRegistrationDialog } from "./EventRegistrationDialog";
 import { VirtualEventPage } from "../events/VirtualEventPage";
 import { MyTicketsDialog } from "./MyTicketsDialog";
@@ -58,6 +58,8 @@ export function AttendeeDashboard() {
   const [showFilters, setShowFilters] = useState(false);
   const [showUserProfile, setShowUserProfile] = useState(false);
 
+  const today = startOfDay(new Date());
+
   useEffect(() => {
     fetchEvents();
     fetchMyTickets();
@@ -80,8 +82,7 @@ export function AttendeeDashboard() {
         ...doc.data(),
         date: doc.data().date.toDate(),
         createdAt: doc.data().createdAt.toDate(),
-        registrationCount: 0, // Default value for consistency
-      })) as unknown as Event[];
+      })) as Event[];
 
       eventsData.sort((a, b) => a.date.getTime() - b.date.getTime());
       setEvents(eventsData);
@@ -122,6 +123,9 @@ export function AttendeeDashboard() {
     return matchesSearch && matchesType;
   });
 
+  const upcomingEvents = filteredEvents.filter(event => !isBefore(event.date, today));
+  const pastEvents = filteredEvents.filter(event => isBefore(event.date, today));
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -143,7 +147,7 @@ export function AttendeeDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#101624] via-[#181F36] to-[#181F36]">
+    <div className="min-h-screen bg-gradient-to-b from-[#101624] via-[#181F36] to-[#181F36] pb-12">
       {/* Enhanced Header */}
       <header className="bg-[#181F36] shadow-sm border-b border-[#232A45] sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -483,118 +487,128 @@ export function AttendeeDashboard() {
           </CardContent>
         </Card>
 
-        {/* Events Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-          {filteredEvents.map((event) => (
-            <Card
-              key={event.id}
-              className="hover:shadow-lg transition-shadow cursor-pointer overflow-hidden bg-gradient-to-br from-[#232A45] via-[#232A45]/80 to-[#181F36] border-none rounded-2xl shadow-md h-full flex flex-col"
-            >
-              <CardContent className="p-0 flex flex-col h-full">
-                {event.bannerBase64 && (
-                  <img
-                    src={event.bannerBase64 || "/placeholder.svg"}
-                    alt={event.title}
-                    className="w-full h-40 sm:h-48 object-cover rounded-t-2xl"
-                  />
-                )}
-                <div className="p-4 sm:p-6 flex flex-col flex-1">
-                  <div className="flex items-center justify-between mb-2">
-                    <Badge variant="outline" className="text-xs bg-blue-700/80 text-white border-none">
-                      {event.type}
-                    </Badge>
-                    <Badge
-                      className={`text-xs ${
-                        event.ticketPrice === 0
-                          ? "bg-green-700/80 text-white"
-                          : "bg-blue-700/80 text-white"
-                      }`}
-                    >
-                      {event.ticketPrice === 0
-                        ? "Free"
-                        : `$${event.ticketPrice}`}
-                    </Badge>
-                  </div>
-
-                  <h3 className="text-lg font-bold mb-2 line-clamp-2 text-white">
-                    {event.title}
-                  </h3>
-                  <p className="text-gray-300 text-sm mb-4 line-clamp-2">
-                    {event.description}
-                  </p>
-
-                  <div className="space-y-2 text-sm text-blue-200 mb-4">
-                    <div className="flex items-center">
-                      <Calendar className="w-4 h-4 mr-2 flex-shrink-0" />
-                      <span className="truncate">
+        {/* Upcoming Events Section */}
+        <h2 className="text-2xl font-bold text-white mb-4">Upcoming Events</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-10">
+          {upcomingEvents.length === 0 ? (
+            <div className="col-span-full text-center py-12">
+              <Calendar className="w-12 h-12 text-blue-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-white mb-2">No upcoming events</h3>
+            </div>
+          ) : (
+            upcomingEvents.map((event) => (
+              <Card
+                key={event.id}
+                className="hover:shadow-lg transition-shadow cursor-pointer overflow-hidden bg-gradient-to-br from-[#232A45] via-[#232A45]/80 to-[#181F36] border-none rounded-2xl shadow-md h-full flex flex-col"
+              >
+                <CardContent className="p-0 flex flex-col h-full">
+                  {event.bannerBase64 && (
+                    <img
+                      src={event.bannerBase64 || "/placeholder.svg"}
+                      alt={event.title}
+                      className="w-full h-40 sm:h-48 object-cover rounded-t-2xl"
+                    />
+                  )}
+                  <div className="p-4 sm:p-6 flex flex-col flex-1">
+                    <div className="flex items-center justify-between mb-2">
+                      <Badge variant="outline" className="text-xs bg-blue-700/80 text-white border-none">
+                        {event.type}
+                      </Badge>
+                      <Badge
+                        className={`text-xs ${event.ticketPrice === 0 ? "bg-green-700/80 text-white" : "bg-blue-700/80 text-white"}`}
+                      >
+                        {event.ticketPrice === 0 ? "Free" : `$${event.ticketPrice}`}
+                      </Badge>
+                    </div>
+                    <h3 className="text-lg font-bold mb-2 line-clamp-2 text-white">{event.title}</h3>
+                    <p className="text-gray-300 text-sm mb-4 line-clamp-2">{event.description}</p>
+                    <div className="flex flex-col gap-2 mb-4">
+                      <div className="flex items-center text-blue-200 text-sm">
+                        <Calendar className="w-4 h-4 mr-2" />
                         {format(event.date, "MMM dd, yyyy")}
-                      </span>
-                    </div>
-                    <div className="flex items-center">
-                      <Clock className="w-4 h-4 mr-2 flex-shrink-0" />
-                      <span className="truncate">{event.time}</span>
-                    </div>
-                    <div className="flex items-center">
-                      <MapPin className="w-4 h-4 mr-2 flex-shrink-0" />
-                      <span className="truncate">
+                      </div>
+                      <div className="flex items-center text-blue-200 text-sm">
+                        <Clock className="w-4 h-4 mr-2" />
+                        {event.time}
+                      </div>
+                      <div className="flex items-center text-blue-200 text-sm">
+                        <MapPin className="w-4 h-4 mr-2" />
                         {event.isVirtual ? "Virtual Event" : event.location}
-                      </span>
+                      </div>
                     </div>
-                  </div>
-
-                  <div className="mt-auto flex items-center w-full">
                     <Button
-                      className="w-full bg-gradient-to-r from-blue-700 to-purple-700 text-white font-bold hover:from-blue-800 hover:to-purple-800"
-                      onClick={() => {
-                        const userTicket = myTickets.find(
-                          (ticket) => ticket.eventId === event.id
-                        );
-
-                        if (event.isVirtual && userTicket) {
-                          setSelectedVirtualEventId(event.id);
-                        } else {
-                          setSelectedEvent(event);
-                        }
-                      }}
-                      variant={
-                        event.status === "live" && event.isVirtual
-                          ? "default"
-                          : "outline"
-                      }
-                      size="sm"
+                      className="w-full bg-gradient-to-r from-blue-700 to-purple-700 text-white font-bold mt-auto hover:from-blue-800 hover:to-purple-800"
+                      onClick={() => setSelectedEvent(event)}
                     >
-                      {event.isVirtual &&
-                      myTickets.find((ticket) => ticket.eventId === event.id) ? (
-                        event.status === "live" ? (
-                          <div className="flex items-center">
-                            <div className="w-2 h-2 bg-white rounded-full mr-2 animate-pulse"></div>
-                            Join Live Event
-                          </div>
-                        ) : (
-                          "Join Virtual Event"
-                        )
-                      ) : (
-                        "Register Now"
-                      )}
+                      Register Now
                     </Button>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            ))
+          )}
         </div>
-
-        {filteredEvents.length === 0 && (
-          <div className="text-center py-12">
-            <Calendar className="w-12 h-12 text-blue-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-white mb-2">
-              No events found
-            </h3>
-            <p className="text-gray-400">
-              Try adjusting your search or filter criteria
-            </p>
-          </div>
-        )}
+        {/* Past Events Section */}
+        <h2 className="text-2xl font-bold text-white mb-4">Past Events</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+          {pastEvents.length === 0 ? (
+            <div className="col-span-full text-center py-12">
+              <Calendar className="w-12 h-12 text-blue-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-white mb-2">No past events</h3>
+            </div>
+          ) : (
+            pastEvents.map((event) => (
+              <Card
+                key={event.id}
+                className="hover:shadow-lg transition-shadow cursor-pointer overflow-hidden bg-gradient-to-br from-[#232A45] via-[#232A45]/80 to-[#181F36] border-none rounded-2xl shadow-md h-full flex flex-col opacity-80"
+              >
+                <CardContent className="p-0 flex flex-col h-full">
+                  {event.bannerBase64 && (
+                    <img
+                      src={event.bannerBase64 || "/placeholder.svg"}
+                      alt={event.title}
+                      className="w-full h-40 sm:h-48 object-cover rounded-t-2xl"
+                    />
+                  )}
+                  <div className="p-4 sm:p-6 flex flex-col flex-1">
+                    <div className="flex items-center justify-between mb-2">
+                      <Badge variant="outline" className="text-xs bg-blue-700/80 text-white border-none">
+                        {event.type}
+                      </Badge>
+                      <Badge
+                        className={`text-xs ${event.ticketPrice === 0 ? "bg-green-700/80 text-white" : "bg-blue-700/80 text-white"}`}
+                      >
+                        {event.ticketPrice === 0 ? "Free" : `$${event.ticketPrice}`}
+                      </Badge>
+                    </div>
+                    <h3 className="text-lg font-bold mb-2 line-clamp-2 text-white">{event.title}</h3>
+                    <p className="text-gray-300 text-sm mb-4 line-clamp-2">{event.description}</p>
+                    <div className="flex flex-col gap-2 mb-4">
+                      <div className="flex items-center text-blue-200 text-sm">
+                        <Calendar className="w-4 h-4 mr-2" />
+                        {format(event.date, "MMM dd, yyyy")}
+                      </div>
+                      <div className="flex items-center text-blue-200 text-sm">
+                        <Clock className="w-4 h-4 mr-2" />
+                        {event.time}
+                      </div>
+                      <div className="flex items-center text-blue-200 text-sm">
+                        <MapPin className="w-4 h-4 mr-2" />
+                        {event.isVirtual ? "Virtual Event" : event.location}
+                      </div>
+                    </div>
+                    <Button
+                      className="w-full bg-gray-400 text-white font-bold mt-auto cursor-not-allowed"
+                      disabled
+                    >
+                      Event Ended
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+          )}
+        </div>
       </div>
 
       {selectedEvent && (
@@ -610,7 +624,7 @@ export function AttendeeDashboard() {
       <UserProfileDialog
         open={showUserProfile}
         onOpenChange={setShowUserProfile}
-        />
-      </div>
-    );
-  }
+      />
+    </div>
+  );
+}
