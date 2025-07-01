@@ -63,13 +63,6 @@ export function EventRegistrationDialog({
   });
   const [donationAmount, setDonationAmount] = useState(0);
   const [useAutofill, setUseAutofill] = useState(false);
-  const [idProofFile, setIdProofFile] = useState<File | null>(null);
-  const [idProofUrl, setIdProofUrl] = useState<string>("");
-  const [idProofUploading, setIdProofUploading] = useState(false);
-  const [idProofUploadProgress, setIdProofUploadProgress] = useState<number>(0);
-  const [idProofError, setIdProofError] = useState<string>("");
-
-  const allowedTypes = ["image/jpeg", "image/png", "image/jpg", "application/pdf"];
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -171,10 +164,7 @@ export function EventRegistrationDialog({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
-    if (!idProofUrl) {
-      setIdProofError("Please upload a valid ID Proof before registering.");
-      return;
-    }
+    
     setLoading(true);
     try {
       // Save user profile if they want autofill enabled
@@ -188,13 +178,13 @@ export function EventRegistrationDialog({
         await updateUserProfile(profileData);
       }
 
-      // Create ticket
+      // Create ticket - remove idProofUrl from registrationData
       const ticketData = {
         eventId: event.id,
         attendeeUid: user.uid,
         qrCode: generateQRCode(),
         checkedIn: false,
-        registrationData: { ...formData, idProofUrl },
+        registrationData: { ...formData }, // Remove idProofUrl from here
         discountCode: discountCode.trim() || null,
         originalPrice: event.ticketPrice,
         finalPrice: calculatedPrice,
@@ -373,64 +363,6 @@ export function EventRegistrationDialog({
         description: "Your saved information has been filled in",
       });
     }
-  };
-
-  const handleIdProofChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    setIdProofError("");
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (!allowedTypes.includes(file.type)) {
-      setIdProofError("Unsupported file format. Please upload JPG, PNG, or PDF files only.");
-      setIdProofFile(null);
-      setIdProofUrl("");
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      setIdProofError("File too large. Please select a file smaller than 5MB.");
-      setIdProofFile(null);
-      setIdProofUrl("");
-      return;
-    }
-    setIdProofUploading(true);
-    setIdProofUploadProgress(0);
-    try {
-      const storagePath = `uploads/id-proofs/${user?.uid || "anonymous"}/${Date.now()}_${file.name}`;
-      const storageRef = ref(storage, storagePath);
-      const uploadTask = uploadBytesResumable(storageRef, file);
-      uploadTask.on(
-        "state_changed",
-        (snapshot) => {
-          const progress = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
-          setIdProofUploadProgress(progress);
-        },
-        (error) => {
-          setIdProofError("Upload failed. Could not upload ID proof.");
-          setIdProofFile(null);
-          setIdProofUrl("");
-          setIdProofUploading(false);
-        },
-        async () => {
-          const url = await getDownloadURL(uploadTask.snapshot.ref);
-          setIdProofUrl(url);
-          setIdProofFile(file);
-          setIdProofUploading(false);
-          setIdProofUploadProgress(100);
-          toast({ title: "ID Proof Uploaded", description: file.name });
-        }
-      );
-    } catch (err) {
-      setIdProofError("Upload failed. Could not upload ID proof.");
-      setIdProofFile(null);
-      setIdProofUrl("");
-      setIdProofUploading(false);
-    }
-  };
-
-  const handleRemoveIdProof = () => {
-    setIdProofFile(null);
-    setIdProofUrl("");
-    setIdProofUploadProgress(0);
-    setIdProofError("");
   };
 
   return (
@@ -639,42 +571,7 @@ export function EventRegistrationDialog({
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="idProof" className="cursor-pointer">Upload ID Proof (image or PDF, max 5MB)</Label>
-                <div className="relative w-full">
-                  <Input
-                    id="idProof"
-                    type="file"
-                    accept=".jpg,.jpeg,.png,application/pdf"
-                    onChange={handleIdProofChange}
-                    disabled={idProofUploading}
-                    className="block w-full cursor-pointer file:cursor-pointer file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-gray-100 file:text-gray-700 hover:file:bg-blue-100 active:file:bg-blue-200 transition-colors"
-                    style={{ padding: 0 }}
-                  />
-                </div>
-                {idProofError && <p className="text-sm text-red-600">{idProofError}</p>}
-                {idProofUploading && (
-                  <p className="text-sm text-blue-500">Uploading... {idProofUploadProgress}%</p>
-                )}
-                {idProofFile && !idProofUploading && idProofUrl && (
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 mt-2">
-                    <div className="flex-1 flex items-center gap-2">
-                      <span className="text-green-600 font-medium">{idProofFile.name}</span>
-                      <span className="text-xs text-gray-500">({idProofFile.type.replace("image/","").replace("application/","").toUpperCase()})</span>
-                    </div>
-                    <Button type="button" variant="outline" size="sm" onClick={handleRemoveIdProof} className="ml-2">Remove / Replace File</Button>
-                  </div>
-                )}
-                {idProofFile && !idProofUploading && idProofUrl && (
-                  <div className="mt-2">
-                    {idProofFile.type.startsWith("image/") ? (
-                      <img src={idProofUrl} alt="ID Proof Preview" className="w-32 h-32 object-contain rounded border mx-auto sm:mx-0" />
-                    ) : idProofFile.type === "application/pdf" ? (
-                      <iframe src={idProofUrl} title="ID Proof PDF Preview" className="w-full h-40 border rounded" />
-                    ) : null}
-                  </div>
-                )}
-              </div>
+              {/* Remove the ID Proof upload section */}
 
               {/* Save Information Option */}
               <div className="flex items-center space-x-2 p-3 bg-green-50 rounded-lg">
@@ -760,7 +657,7 @@ export function EventRegistrationDialog({
                   >
                     Cancel
                   </Button>
-                  <Button type="submit" disabled={loading || idProofUploading || !idProofUrl}>
+                  <Button type="submit" disabled={loading}>
                     {loading
                       ? "Registering..."
                       : `Register ${calculatedPrice > 0 ? `($${calculatedPrice.toFixed(2)})` : "(Free)"}`}
