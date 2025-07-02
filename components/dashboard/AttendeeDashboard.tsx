@@ -57,6 +57,8 @@ export function AttendeeDashboard() {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [showUserProfile, setShowUserProfile] = useState(false);
+  const [individualEvents, setIndividualEvents] = useState<Record<string, Event>>({});
+  const [showAllTickets, setShowAllTickets] = useState(false);
 
   const today = startOfDay(new Date());
 
@@ -313,7 +315,7 @@ export function AttendeeDashboard() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {myTickets.slice(0, 6).map((ticket) => {
+                {(showAllTickets ? myTickets : myTickets.slice(0, 6)).map((ticket) => {
                   const ticketEvent = events.find(
                     (e) => e.id === ticket.eventId
                   );
@@ -398,21 +400,34 @@ export function AttendeeDashboard() {
                         </TooltipProvider>
                       </div>
                       {ticketEvent && ticketEvent.isVirtual && (
-                        <Button
-                          size="sm"
-                          className="w-full bg-gradient-to-r from-blue-700 to-purple-700 text-white font-bold mt-2 hover:from-blue-800 hover:to-purple-800"
-                          onClick={() => setSelectedVirtualEventId(ticket.eventId)}
-                          variant={ticketEvent.status === "live" ? "default" : "outline"}
-                        >
-                          {ticketEvent.status === "live" ? (
-                            <div className="flex items-center">
-                              <div className="w-2 h-2 bg-white rounded-full mr-2 animate-pulse"></div>
-                              Join Live
-                            </div>
-                          ) : (
-                            "Access Event"
-                          )}
-                        </Button>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span>
+                                <Button
+                                  size="sm"
+                                  className="w-full bg-gradient-to-r from-blue-700 to-purple-700 text-white font-bold mt-2 hover:from-blue-800 hover:to-purple-800"
+                                  onClick={() => setSelectedVirtualEventId(ticket.eventId)}
+                                  disabled={ticketEvent.status !== "live"}
+                                >
+                                  {ticketEvent.status === "live" ? (
+                                    <div className="flex items-center">
+                                      <div className="w-2 h-2 bg-white rounded-full mr-2 animate-pulse"></div>
+                                      Join Live
+                                    </div>
+                                  ) : (
+                                    "Access Event"
+                                  )}
+                                </Button>
+                              </span>
+                            </TooltipTrigger>
+                            {ticketEvent.status !== "live" && (
+                              <TooltipContent side="top" className="bg-[#232A45] text-white rounded-md px-3 py-2 text-xs shadow-lg">
+                                You can join once the event is live
+                              </TooltipContent>
+                            )}
+                          </Tooltip>
+                        </TooltipProvider>
                       )}
                     </div>
                   );
@@ -423,9 +438,9 @@ export function AttendeeDashboard() {
                   <Button
                     variant="outline"
                     className="bg-[#232A45] border-[#2D365A] text-white hover:bg-gradient-to-r hover:from-blue-700 hover:to-purple-700 hover:text-white"
-                    onClick={() => setShowMyTickets(true)}
+                    onClick={() => setShowAllTickets((prev) => !prev)}
                   >
-                    View All Tickets
+                    {showAllTickets ? "Show Less" : "View All Tickets"}
                   </Button>
                 </div>
               )}
