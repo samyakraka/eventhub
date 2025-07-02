@@ -202,9 +202,25 @@ export function EventRegistrationDialog({
 
   const handleRegistrationSubmit = async (registrationData: Record<string, any>) => {
     if (!user) return;
-    
     setLoading(true);
     try {
+      // Prevent duplicate registration: check if ticket already exists
+      const existingTicketQuery = query(
+        collection(db, "tickets"),
+        where("eventId", "==", event.id),
+        where("attendeeUid", "==", user.uid)
+      );
+      const existingTicketSnapshot = await getDocs(existingTicketQuery);
+      if (!existingTicketSnapshot.empty) {
+        toast({
+          title: "Already Registered",
+          description: "You have already registered for this event.",
+          variant: "destructive",
+        });
+        setLoading(false);
+        return;
+      }
+
       // Save user profile if they want autofill enabled (only for default form)
       if (!customForm && useAutofill) {
         const profileData = {
