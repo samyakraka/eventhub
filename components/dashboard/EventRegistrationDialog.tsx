@@ -359,6 +359,13 @@ export function EventRegistrationDialog({
             <p style="color: #22c55e;">Thanks for registering with <span style='background: #FFEB3B; color: #222; padding: 2px 6px; border-radius: 4px;'>EventHub</span> — we'll see you at the event! 🎶</p>
           </div>
         `;
+        const emailText = `Greetings from EventHub!\n\nYou're all set for ${
+          event.title
+        } 🎉\n\nDate: ${format(event.startDate, "MMM dd, yyyy")}\nTime: ${
+          event.time
+        }\nVenue: ${
+          event.isVirtual ? "Virtual Event" : event.location
+        }\n\nTicket ID: ${ticketId}\nQR Code Data: ${ticketId}\n\nView your ticket: ${ticketLink}\n\nNeed Help? Contact us at support@eventhub.com\n\nThanks for registering with EventHub — we'll see you at the event! 🎶`;
         try {
           await fetch("/api/send-email", {
             method: "POST",
@@ -369,13 +376,7 @@ export function EventRegistrationDialog({
               to: email,
               subject: `Your Ticket for ${event.title}`,
               html: emailHtml,
-              text: `Greetings from EventHub!\n\nYou're all set for ${
-                event.title
-              } 🎉\n\nDate: ${format(event.startDate, "MMM dd, yyyy")}\nTime: ${
-                event.time
-              }\nVenue: ${
-                event.isVirtual ? "Virtual Event" : event.location
-              }\n\nTicket ID: ${ticketId}\nQR Code Data: ${ticketId}\n\nView your ticket: ${ticketLink}\n\nNeed Help? Contact us at support@eventhub.com\n\nThanks for registering with EventHub — we'll see you at the event! 🎶`,
+              text: emailText,
             }),
           });
         } catch (error) {
@@ -622,7 +623,9 @@ export function EventRegistrationDialog({
             </div>
 
             <p className="text-xs text-gray-500 mt-6">
-              Need help? Contact {organizerInfo?.displayName || "the event organizer"} or check our support center.
+              Need help? Contact{" "}
+              {organizerInfo?.displayName || "the event organizer"} or check our
+              support center.
             </p>
           </div>
         ) : (

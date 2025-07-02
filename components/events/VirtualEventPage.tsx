@@ -36,6 +36,7 @@ import {
   TooltipProvider,
 } from "@/components/ui/tooltip";
 import { MyTicketsDialog } from "@/components/dashboard/MyTicketsDialog";
+import { useRouter } from "next/navigation";
 
 interface VirtualEventPageProps {
   eventId: string;
@@ -44,6 +45,7 @@ interface VirtualEventPageProps {
 
 export function VirtualEventPage({ eventId, onBack }: VirtualEventPageProps) {
   const { user } = useAuth();
+  const router = useRouter();
   const [event, setEvent] = useState<Event | null>(null);
   const [hasAccess, setHasAccess] = useState(false);
   const [isCheckedIn, setIsCheckedIn] = useState(false);
@@ -187,13 +189,22 @@ export function VirtualEventPage({ eventId, onBack }: VirtualEventPageProps) {
   if (!hasAccess) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-[#101624] via-[#181F36] to-[#181F36]">
-        <header className="bg-white shadow-sm border-b">
+        <header className="bg-[#181F36] shadow-sm border-b border-[#232A45] sticky top-0 z-40">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between py-4">
               <Button variant="ghost" onClick={onBack}>
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Back to Events
               </Button>
+              <div
+                className="flex items-center space-x-3 cursor-pointer"
+                onClick={() => router.push("/")}
+              >
+                <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
+                  <Sparkles className="w-5 h-5 text-white" />
+                </div>
+                <span className="text-xl font-bold text-white">EventHub</span>
+              </div>
             </div>
           </div>
         </header>

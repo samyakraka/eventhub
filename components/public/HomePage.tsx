@@ -123,16 +123,22 @@ export function HomePage({
             let organizerName = "Event Organizer";
             if (event.organizerUid) {
               try {
-                const userDoc = await getDoc(doc(db, "users", event.organizerUid));
+                const userDoc = await getDoc(
+                  doc(db, "users", event.organizerUid)
+                );
                 if (userDoc.exists()) {
                   const userData = userDoc.data();
-                  organizerName = userData.displayName || 
-                    (userData.firstName && userData.lastName 
-                      ? `${userData.firstName} ${userData.lastName}` 
+                  organizerName =
+                    userData.displayName ||
+                    (userData.firstName && userData.lastName
+                      ? `${userData.firstName} ${userData.lastName}`
                       : "Event Organizer");
                 }
               } catch (error) {
-                console.error(`Error fetching organizer for event ${event.id}:`, error);
+                console.error(
+                  `Error fetching organizer for event ${event.id}:`,
+                  error
+                );
               }
             }
 
@@ -280,6 +286,10 @@ export function HomePage({
     }
   };
 
+  const handleLogoClick = () => {
+    router.push("/");
+  };
+
   return (
     <div className="min-h-screen bg-gray-900 text-gray-100 overflow-hidden relative">
       {/* Subtle background effect - Adjusted for dark theme */}
@@ -294,7 +304,10 @@ export function HomePage({
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             {/* Logo */}
-            <div className="flex items-center space-x-3">
+            <div
+              className="flex items-center space-x-3 cursor-pointer"
+              onClick={handleLogoClick}
+            >
               <div className="relative">
                 <div className="w-10 h-10 bg-gradient-to-br from-blue-600 via-purple-600 to-pink-500 rounded-2xl flex items-center justify-center shadow-lg">
                   <Sparkles className="w-6 h-6 text-white" />
@@ -1319,7 +1332,10 @@ export function HomePage({
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12 mb-12">
             <div className="col-span-full md:col-span-1 text-center md:text-left">
-              <div className="flex items-center justify-center md:justify-start space-x-3 mb-4">
+              <div
+                className="flex items-center justify-center md:justify-start space-x-3 mb-4 cursor-pointer"
+                onClick={handleLogoClick}
+              >
                 <div className="relative">
                   <div className="w-10 h-10 bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 rounded-2xl flex items-center justify-center shadow-lg">
                     <Sparkles className="w-6 h-6 text-white" />

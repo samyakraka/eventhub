@@ -1,5 +1,5 @@
 "use client";
-
+import { Sparkles } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -98,7 +98,14 @@ export default function EventPage() {
             : data.date?.toDate() || new Date(),
           createdAt: data.createdAt.toDate(),
           registrationCount: 0, // Default value for consistency
-        } as Event;
+          // Ensure all required Event properties have defaults
+          title: data.title || "",
+          description: data.description || "",
+          type: data.type || "",
+          time: data.time || "",
+          location: data.location || "",
+          status: data.status || "upcoming",
+        } as unknown as Event;
         setEvent(eventData);
 
         // Fetch organizer information
@@ -119,9 +126,12 @@ export default function EventPage() {
       if (userDoc.exists()) {
         const userData = userDoc.data();
         setOrganizerInfo({
-          displayName: userData.displayName || userData.firstName + " " + userData.lastName || "Event Organizer",
+          displayName:
+            userData.displayName ||
+            userData.firstName + " " + userData.lastName ||
+            "Event Organizer",
           email: userData.email || "",
-          role: userData.role || "organizer"
+          role: userData.role || "organizer",
         });
       }
     } catch (error) {
@@ -129,7 +139,7 @@ export default function EventPage() {
       setOrganizerInfo({
         displayName: "Event Organizer",
         email: "",
-        role: "organizer"
+        role: "organizer",
       });
     }
   };
@@ -254,6 +264,17 @@ export default function EventPage() {
               <ArrowLeft className="w-4 h-4" />
               <span>Back to Events</span>
             </Button>
+            <div
+              className="flex items-center space-x-3 cursor-pointer"
+              onClick={() => router.push("/")}
+            >
+              <div className="w-8 h-8 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-500 rounded-lg flex items-center justify-center shadow-lg">
+                <Sparkles className="w-5 h-5 text-white" />
+              </div>
+              <span className="text-xl font-bold bg-gradient-to-r from-gray-900 via-blue-800 to-purple-800 bg-clip-text text-transparent">
+                EventHub
+              </span>
+            </div>
             <Button
               variant="outline"
               onClick={shareEvent}
@@ -752,8 +773,8 @@ export default function EventPage() {
                       {organizerInfo?.displayName || "Event Organizer"}
                     </p>
                     <p className="text-gray-600">
-                      {organizerInfo?.role === "organizer" 
-                        ? "Professional event management" 
+                      {organizerInfo?.role === "organizer"
+                        ? "Professional event management"
                         : "Event Creator"}
                     </p>
                     {organizerInfo?.email && (

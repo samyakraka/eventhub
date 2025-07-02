@@ -63,13 +63,16 @@ export function EventDetailsPage({ eventId, onBack }: EventDetailsPageProps) {
 
         // Fetch organizer information
         if (eventData.organizerUid) {
-          const userDoc = await getDoc(doc(db, "users", eventData.organizerUid));
+          const userDoc = await getDoc(
+            doc(db, "users", eventData.organizerUid)
+          );
           if (userDoc.exists()) {
             const userData = userDoc.data();
             setOrganizerInfo({
-              displayName: userData.displayName || 
-                (userData.firstName && userData.lastName 
-                  ? `${userData.firstName} ${userData.lastName}` 
+              displayName:
+                userData.displayName ||
+                (userData.firstName && userData.lastName
+                  ? `${userData.firstName} ${userData.lastName}`
                   : "Event Organizer"),
               email: userData.email || "",
             });
