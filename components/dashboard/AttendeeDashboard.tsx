@@ -40,7 +40,12 @@ import { VirtualEventPage } from "../events/VirtualEventPage";
 import { MyTicketsDialog } from "./MyTicketsDialog";
 import { UserProfileDialog } from "./UserProfileDialog";
 import { toast } from "@/hooks/use-toast";
-import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+  TooltipProvider,
+} from "@/components/ui/tooltip";
 
 export function AttendeeDashboard() {
   const { user, logout } = useAuth();
@@ -57,7 +62,9 @@ export function AttendeeDashboard() {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [showUserProfile, setShowUserProfile] = useState(false);
-  const [individualEvents, setIndividualEvents] = useState<Record<string, Event>>({});
+  const [individualEvents, setIndividualEvents] = useState<
+    Record<string, Event>
+  >({});
   const [showAllTickets, setShowAllTickets] = useState(false);
 
   const today = startOfDay(new Date());
@@ -79,14 +86,22 @@ export function AttendeeDashboard() {
         limit(20)
       );
       const querySnapshot = await getDocs(q);
-      const eventsData = querySnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-        date: doc.data().date.toDate(),
-        createdAt: doc.data().createdAt.toDate(),
-      })) as Event[];
+      const eventsData = querySnapshot.docs.map((doc) => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data,
+          startDate: data.startDate
+            ? data.startDate.toDate()
+            : data.date?.toDate() || new Date(),
+          endDate: data.endDate
+            ? data.endDate.toDate()
+            : data.date?.toDate() || new Date(),
+          createdAt: data.createdAt.toDate(),
+        };
+      }) as Event[];
 
-      eventsData.sort((a, b) => a.date.getTime() - b.date.getTime());
+      eventsData.sort((a, b) => a.startDate.getTime() - b.startDate.getTime());
       setEvents(eventsData);
     } catch (error) {
       console.error("Error fetching events:", error);
@@ -125,8 +140,12 @@ export function AttendeeDashboard() {
     return matchesSearch && matchesType;
   });
 
-  const upcomingEvents = filteredEvents.filter(event => !isBefore(event.date, today));
-  const pastEvents = filteredEvents.filter(event => isBefore(event.date, today));
+  const upcomingEvents = filteredEvents.filter(
+    (event) => !isBefore(event.startDate, today)
+  );
+  const pastEvents = filteredEvents.filter((event) =>
+    isBefore(event.endDate, today)
+  );
 
   if (loading) {
     return (
@@ -174,7 +193,10 @@ export function AttendeeDashboard() {
               >
                 <TicketIcon className="w-4 h-4" />
                 <span>My Tickets</span>
-                <Badge variant="secondary" className="ml-1 bg-blue-700 text-white">
+                <Badge
+                  variant="secondary"
+                  className="ml-1 bg-blue-700 text-white"
+                >
                   {myTickets.length}
                 </Badge>
               </Button>
@@ -226,7 +248,9 @@ export function AttendeeDashboard() {
                   <TicketIcon className="w-4 h-4" />
                   <span>My Tickets</span>
                 </div>
-                <Badge variant="secondary" className="bg-blue-700 text-white">{myTickets.length}</Badge>
+                <Badge variant="secondary" className="bg-blue-700 text-white">
+                  {myTickets.length}
+                </Badge>
               </Button>
               <Button
                 variant="ghost"
@@ -307,131 +331,164 @@ export function AttendeeDashboard() {
               <CardTitle className="flex items-center text-xl text-white">
                 <TicketIcon className="w-5 h-5 mr-2 text-blue-400" />
                 My Tickets
-                <Badge variant="secondary" className="ml-2 bg-blue-700 text-white">
+                <Badge
+                  variant="secondary"
+                  className="ml-2 bg-blue-700 text-white"
+                >
                   {myTickets.length}
                 </Badge>
               </CardTitle>
-              <CardDescription className="text-gray-300">Your registered events</CardDescription>
+              <CardDescription className="text-gray-300">
+                Your registered events
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {(showAllTickets ? myTickets : myTickets.slice(0, 6)).map((ticket) => {
-                  const ticketEvent = events.find(
-                    (e) => e.id === ticket.eventId
-                  );
+                {(showAllTickets ? myTickets : myTickets.slice(0, 6)).map(
+                  (ticket) => {
+                    const ticketEvent = events.find(
+                      (e) => e.id === ticket.eventId
+                    );
 
-                  // Copy to clipboard handler
-                  const copyToClipboard = (text: string, label: string) => {
-                    navigator.clipboard.writeText(text).then(() => {
-                      toast({
-                        title: "Copied!",
-                        description: `${label} copied to clipboard`,
+                    // Copy to clipboard handler
+                    const copyToClipboard = (text: string, label: string) => {
+                      navigator.clipboard.writeText(text).then(() => {
+                        toast({
+                          title: "Copied!",
+                          description: `${label} copied to clipboard`,
+                        });
                       });
-                    });
-                  };
+                    };
 
-                  return (
-                    <div
-                      key={ticket.id}
-                      className="border-none rounded-xl p-4 bg-[#22305A]/80 hover:bg-gradient-to-br hover:from-blue-900 hover:to-purple-900 transition-colors shadow-md text-white"
-                    >
-                      {/* Event Name Heading */}
-                      {ticketEvent && (
-                        <h3 className="font-semibold text-base text-blue-300 mb-1 line-clamp-1">
-                          {ticketEvent.title}
-                        </h3>
-                      )}
-                      <div className="flex items-center justify-between mb-2">
-                        <Badge variant="secondary" className="text-xs bg-green-700/80 text-white">
-                          Registered
-                        </Badge>
-                        {ticket.checkedIn && (
-                          <Badge className="bg-green-100 text-green-800 text-xs">
-                            Checked In
+                    return (
+                      <div
+                        key={ticket.id}
+                        className="border-none rounded-xl p-4 bg-[#22305A]/80 hover:bg-gradient-to-br hover:from-blue-900 hover:to-purple-900 transition-colors shadow-md text-white"
+                      >
+                        {/* Event Name Heading */}
+                        {ticketEvent && (
+                          <h3 className="font-semibold text-base text-blue-300 mb-1 line-clamp-1">
+                            {ticketEvent.title}
+                          </h3>
+                        )}
+                        <div className="flex items-center justify-between mb-2">
+                          <Badge
+                            variant="secondary"
+                            className="text-xs bg-green-700/80 text-white"
+                          >
+                            Registered
                           </Badge>
+                          {ticket.checkedIn && (
+                            <Badge className="bg-green-100 text-green-800 text-xs">
+                              Checked In
+                            </Badge>
+                          )}
+                        </div>
+                        {/* Ticket ID with copy and tooltip */}
+                        <div className="flex items-center mb-1 gap-2">
+                          <span className="text-xs font-medium text-blue-200 min-w-[70px]">
+                            Ticket ID:
+                          </span>
+                          <span className="text-xs font-mono text-blue-100 break-all">
+                            {ticket.id.slice(0, 12)}...
+                          </span>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="ml-1 text-blue-200 hover:text-white"
+                                  onClick={() =>
+                                    copyToClipboard(ticket.id, "Ticket ID")
+                                  }
+                                  tabIndex={0}
+                                  aria-label="Copy Ticket ID"
+                                >
+                                  <Copy className="w-4 h-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent
+                                side="top"
+                                className="bg-[#232A45] text-white rounded-md px-3 py-2 text-xs shadow-lg"
+                              >
+                                Click to copy Ticket ID
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
+                        {/* QR Code with copy and tooltip */}
+                        <div className="flex items-center mb-3 gap-2">
+                          <span className="text-xs font-medium text-blue-200 min-w-[70px]">
+                            QR:
+                          </span>
+                          <span className="text-xs font-mono text-blue-100 break-all">
+                            {ticket.qrCode.slice(0, 12)}...
+                          </span>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="ml-1 text-blue-200 hover:text-white"
+                                  onClick={() =>
+                                    copyToClipboard(ticket.qrCode, "QR Code")
+                                  }
+                                  tabIndex={0}
+                                  aria-label="Copy QR Code"
+                                >
+                                  <Copy className="w-4 h-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent
+                                side="top"
+                                className="bg-[#232A45] text-white rounded-md px-3 py-2 text-xs shadow-lg"
+                              >
+                                Click to copy QR
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
+                        {ticketEvent && ticketEvent.isVirtual && (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span>
+                                  <Button
+                                    size="sm"
+                                    className="w-full bg-gradient-to-r from-blue-700 to-purple-700 text-white font-bold mt-2 hover:from-blue-800 hover:to-purple-800"
+                                    onClick={() =>
+                                      setSelectedVirtualEventId(ticket.eventId)
+                                    }
+                                    disabled={ticketEvent.status !== "live"}
+                                  >
+                                    {ticketEvent.status === "live" ? (
+                                      <div className="flex items-center">
+                                        <div className="w-2 h-2 bg-white rounded-full mr-2 animate-pulse"></div>
+                                        Join Live
+                                      </div>
+                                    ) : (
+                                      "Access Event"
+                                    )}
+                                  </Button>
+                                </span>
+                              </TooltipTrigger>
+                              {ticketEvent.status !== "live" && (
+                                <TooltipContent
+                                  side="top"
+                                  className="bg-[#232A45] text-white rounded-md px-3 py-2 text-xs shadow-lg"
+                                >
+                                  You can join once the event is live
+                                </TooltipContent>
+                              )}
+                            </Tooltip>
+                          </TooltipProvider>
                         )}
                       </div>
-                      {/* Ticket ID with copy and tooltip */}
-                      <div className="flex items-center mb-1 gap-2">
-                        <span className="text-xs font-medium text-blue-200 min-w-[70px]">Ticket ID:</span>
-                        <span className="text-xs font-mono text-blue-100 break-all">{ticket.id.slice(0, 12)}...</span>
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                className="ml-1 text-blue-200 hover:text-white"
-                                onClick={() => copyToClipboard(ticket.id, 'Ticket ID')}
-                                tabIndex={0}
-                                aria-label="Copy Ticket ID"
-                              >
-                                <Copy className="w-4 h-4" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent side="top" className="bg-[#232A45] text-white rounded-md px-3 py-2 text-xs shadow-lg">
-                              Click to copy Ticket ID
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      </div>
-                      {/* QR Code with copy and tooltip */}
-                      <div className="flex items-center mb-3 gap-2">
-                        <span className="text-xs font-medium text-blue-200 min-w-[70px]">QR:</span>
-                        <span className="text-xs font-mono text-blue-100 break-all">{ticket.qrCode.slice(0, 12)}...</span>
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                className="ml-1 text-blue-200 hover:text-white"
-                                onClick={() => copyToClipboard(ticket.qrCode, 'QR Code')}
-                                tabIndex={0}
-                                aria-label="Copy QR Code"
-                              >
-                                <Copy className="w-4 h-4" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent side="top" className="bg-[#232A45] text-white rounded-md px-3 py-2 text-xs shadow-lg">
-                              Click to copy QR
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      </div>
-                      {ticketEvent && ticketEvent.isVirtual && (
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span>
-                                <Button
-                                  size="sm"
-                                  className="w-full bg-gradient-to-r from-blue-700 to-purple-700 text-white font-bold mt-2 hover:from-blue-800 hover:to-purple-800"
-                                  onClick={() => setSelectedVirtualEventId(ticket.eventId)}
-                                  disabled={ticketEvent.status !== "live"}
-                                >
-                                  {ticketEvent.status === "live" ? (
-                                    <div className="flex items-center">
-                                      <div className="w-2 h-2 bg-white rounded-full mr-2 animate-pulse"></div>
-                                      Join Live
-                                    </div>
-                                  ) : (
-                                    "Access Event"
-                                  )}
-                                </Button>
-                              </span>
-                            </TooltipTrigger>
-                            {ticketEvent.status !== "live" && (
-                              <TooltipContent side="top" className="bg-[#232A45] text-white rounded-md px-3 py-2 text-xs shadow-lg">
-                                You can join once the event is live
-                              </TooltipContent>
-                            )}
-                          </Tooltip>
-                        </TooltipProvider>
-                      )}
-                    </div>
-                  );
-                })}
+                    );
+                  }
+                )}
               </div>
               {myTickets.length > 6 && (
                 <div className="mt-4 text-center">
@@ -508,7 +565,9 @@ export function AttendeeDashboard() {
           {upcomingEvents.length === 0 ? (
             <div className="col-span-full text-center py-12">
               <Calendar className="w-12 h-12 text-blue-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-white mb-2">No upcoming events</h3>
+              <h3 className="text-lg font-medium text-white mb-2">
+                No upcoming events
+              </h3>
             </div>
           ) : (
             upcomingEvents.map((event) => (
@@ -526,21 +585,34 @@ export function AttendeeDashboard() {
                   )}
                   <div className="p-4 sm:p-6 flex flex-col flex-1">
                     <div className="flex items-center justify-between mb-2">
-                      <Badge variant="outline" className="text-xs bg-blue-700/80 text-white border-none">
+                      <Badge
+                        variant="outline"
+                        className="text-xs bg-blue-700/80 text-white border-none"
+                      >
                         {event.type}
                       </Badge>
                       <Badge
-                        className={`text-xs ${event.ticketPrice === 0 ? "bg-green-700/80 text-white" : "bg-blue-700/80 text-white"}`}
+                        className={`text-xs ${
+                          event.ticketPrice === 0
+                            ? "bg-green-700/80 text-white"
+                            : "bg-blue-700/80 text-white"
+                        }`}
                       >
-                        {event.ticketPrice === 0 ? "Free" : `$${event.ticketPrice}`}
+                        {event.ticketPrice === 0
+                          ? "Free"
+                          : `$${event.ticketPrice}`}
                       </Badge>
                     </div>
-                    <h3 className="text-lg font-bold mb-2 line-clamp-2 text-white">{event.title}</h3>
-                    <p className="text-gray-300 text-sm mb-4 line-clamp-2">{event.description}</p>
+                    <h3 className="text-lg font-bold mb-2 line-clamp-2 text-white">
+                      {event.title}
+                    </h3>
+                    <p className="text-gray-300 text-sm mb-4 line-clamp-2">
+                      {event.description}
+                    </p>
                     <div className="flex flex-col gap-2 mb-4">
                       <div className="flex items-center text-blue-200 text-sm">
                         <Calendar className="w-4 h-4 mr-2" />
-                        {format(event.date, "MMM dd, yyyy")}
+                        {format(event.startDate, "MMM dd, yyyy")}
                       </div>
                       <div className="flex items-center text-blue-200 text-sm">
                         <Clock className="w-4 h-4 mr-2" />
@@ -569,7 +641,9 @@ export function AttendeeDashboard() {
           {pastEvents.length === 0 ? (
             <div className="col-span-full text-center py-12">
               <Calendar className="w-12 h-12 text-blue-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-white mb-2">No past events</h3>
+              <h3 className="text-lg font-medium text-white mb-2">
+                No past events
+              </h3>
             </div>
           ) : (
             pastEvents.map((event) => (
@@ -587,21 +661,34 @@ export function AttendeeDashboard() {
                   )}
                   <div className="p-4 sm:p-6 flex flex-col flex-1">
                     <div className="flex items-center justify-between mb-2">
-                      <Badge variant="outline" className="text-xs bg-blue-700/80 text-white border-none">
+                      <Badge
+                        variant="outline"
+                        className="text-xs bg-blue-700/80 text-white border-none"
+                      >
                         {event.type}
                       </Badge>
                       <Badge
-                        className={`text-xs ${event.ticketPrice === 0 ? "bg-green-700/80 text-white" : "bg-blue-700/80 text-white"}`}
+                        className={`text-xs ${
+                          event.ticketPrice === 0
+                            ? "bg-green-700/80 text-white"
+                            : "bg-blue-700/80 text-white"
+                        }`}
                       >
-                        {event.ticketPrice === 0 ? "Free" : `$${event.ticketPrice}`}
+                        {event.ticketPrice === 0
+                          ? "Free"
+                          : `$${event.ticketPrice}`}
                       </Badge>
                     </div>
-                    <h3 className="text-lg font-bold mb-2 line-clamp-2 text-white">{event.title}</h3>
-                    <p className="text-gray-300 text-sm mb-4 line-clamp-2">{event.description}</p>
+                    <h3 className="text-lg font-bold mb-2 line-clamp-2 text-white">
+                      {event.title}
+                    </h3>
+                    <p className="text-gray-300 text-sm mb-4 line-clamp-2">
+                      {event.description}
+                    </p>
                     <div className="flex flex-col gap-2 mb-4">
                       <div className="flex items-center text-blue-200 text-sm">
                         <Calendar className="w-4 h-4 mr-2" />
-                        {format(event.date, "MMM dd, yyyy")}
+                        {format(event.startDate, "MMM dd, yyyy")}
                       </div>
                       <div className="flex items-center text-blue-200 text-sm">
                         <Clock className="w-4 h-4 mr-2" />

@@ -60,11 +60,17 @@ export function VirtualEventPage({ eventId, onBack }: VirtualEventPageProps) {
       // Fetch event
       const eventDoc = await getDoc(doc(db, "events", eventId));
       if (eventDoc.exists()) {
+        const data = eventDoc.data();
         const eventData = {
           id: eventDoc.id,
-          ...eventDoc.data(),
-          date: eventDoc.data().date.toDate(),
-          createdAt: eventDoc.data().createdAt.toDate(),
+          ...data,
+          startDate: data.startDate
+            ? data.startDate.toDate()
+            : data.date?.toDate() || new Date(),
+          endDate: data.endDate
+            ? data.endDate.toDate()
+            : data.date?.toDate() || new Date(),
+          createdAt: data.createdAt.toDate(),
           registrationCount: 0, // Default value for consistency
         } as Event;
         setEvent(eventData);

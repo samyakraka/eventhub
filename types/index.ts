@@ -48,7 +48,8 @@ export interface Event {
   location?: string;
   virtualLink?: string;
   virtualType?: "meeting" | "broadcast";
-  date: Date;
+  startDate: Date;
+  endDate: Date;
   time: string;
   endTime: string;
   themeColor: string;
@@ -120,7 +121,17 @@ export interface ReferralCode {
 
 export interface FormField {
   id: string;
-  type: "text" | "email" | "phone" | "number" | "date" | "select" | "radio" | "checkbox" | "textarea" | "file";
+  type:
+    | "text"
+    | "email"
+    | "phone"
+    | "number"
+    | "date"
+    | "select"
+    | "radio"
+    | "checkbox"
+    | "textarea"
+    | "file";
   label: string;
   placeholder?: string;
   required: boolean;
@@ -146,57 +157,253 @@ export interface CustomForm {
 }
 
 // Predefined form field templates
-export const FORM_FIELD_TEMPLATES: Omit<FormField, 'id' | 'order'>[] = [
+export const FORM_FIELD_TEMPLATES: Omit<FormField, "id" | "order">[] = [
   // Personal Information
-  { type: "text", label: "Full Name", placeholder: "Enter your full name", required: true },
-  { type: "text", label: "Father's Name", placeholder: "Enter your father's name", required: false },
-  { type: "text", label: "Mother's Name", placeholder: "Enter your mother's name", required: false },
+  {
+    type: "text",
+    label: "Full Name",
+    placeholder: "Enter your full name",
+    required: true,
+  },
+  {
+    type: "text",
+    label: "Father's Name",
+    placeholder: "Enter your father's name",
+    required: false,
+  },
+  {
+    type: "text",
+    label: "Mother's Name",
+    placeholder: "Enter your mother's name",
+    required: false,
+  },
   { type: "date", label: "Date of Birth", required: true },
-  { type: "select", label: "Gender", options: ["Male", "Female", "Other", "Prefer not to say"], required: false },
-  { type: "select", label: "Sexual Orientation", options: ["Straight", "Gay", "Lesbian", "Bisexual", "Pansexual", "Asexual", "Other", "Prefer not to say"], required: false },
-  
+  {
+    type: "select",
+    label: "Gender",
+    options: ["Male", "Female", "Other", "Prefer not to say"],
+    required: false,
+  },
+  {
+    type: "select",
+    label: "Sexual Orientation",
+    options: [
+      "Straight",
+      "Gay",
+      "Lesbian",
+      "Bisexual",
+      "Pansexual",
+      "Asexual",
+      "Other",
+      "Prefer not to say",
+    ],
+    required: false,
+  },
+
   // Contact Information
-  { type: "email", label: "Email Address", placeholder: "Enter your email address", required: true },
-  { type: "phone", label: "Phone Number", placeholder: "Enter your phone number", required: true },
-  { type: "text", label: "Alternate Phone", placeholder: "Enter alternate phone number", required: false },
-  
+  {
+    type: "email",
+    label: "Email Address",
+    placeholder: "Enter your email address",
+    required: true,
+  },
+  {
+    type: "phone",
+    label: "Phone Number",
+    placeholder: "Enter your phone number",
+    required: true,
+  },
+  {
+    type: "text",
+    label: "Alternate Phone",
+    placeholder: "Enter alternate phone number",
+    required: false,
+  },
+
   // Address Information
-  { type: "textarea", label: "Address", placeholder: "Enter your complete address", required: false },
-  { type: "text", label: "City", placeholder: "Enter your city", required: false },
-  { type: "text", label: "State", placeholder: "Enter your state", required: false },
-  { type: "text", label: "Pincode", placeholder: "Enter your pincode", required: false },
-  { type: "text", label: "Country", placeholder: "Enter your country", required: false },
-  
+  {
+    type: "textarea",
+    label: "Address",
+    placeholder: "Enter your complete address",
+    required: false,
+  },
+  {
+    type: "text",
+    label: "City",
+    placeholder: "Enter your city",
+    required: false,
+  },
+  {
+    type: "text",
+    label: "State",
+    placeholder: "Enter your state",
+    required: false,
+  },
+  {
+    type: "text",
+    label: "Pincode",
+    placeholder: "Enter your pincode",
+    required: false,
+  },
+  {
+    type: "text",
+    label: "Country",
+    placeholder: "Enter your country",
+    required: false,
+  },
+
   // Professional Information
-  { type: "text", label: "Company/Organization", placeholder: "Enter your company or organization", required: false },
-  { type: "text", label: "Job Title", placeholder: "Enter your job title", required: false },
-  { type: "text", label: "Department", placeholder: "Enter your department", required: false },
-  { type: "number", label: "Years of Experience", placeholder: "Enter years of experience", required: false },
-  
+  {
+    type: "text",
+    label: "Company/Organization",
+    placeholder: "Enter your company or organization",
+    required: false,
+  },
+  {
+    type: "text",
+    label: "Job Title",
+    placeholder: "Enter your job title",
+    required: false,
+  },
+  {
+    type: "text",
+    label: "Department",
+    placeholder: "Enter your department",
+    required: false,
+  },
+  {
+    type: "number",
+    label: "Years of Experience",
+    placeholder: "Enter years of experience",
+    required: false,
+  },
+
   // Identity Documents
-  { type: "text", label: "Passport Number", placeholder: "Enter your passport number", required: false },
-  { type: "text", label: "Aadhar Number", placeholder: "Enter your Aadhar number", required: false },
-  { type: "text", label: "PAN Number", placeholder: "Enter your PAN number", required: false },
-  { type: "text", label: "Driving License", placeholder: "Enter your driving license number", required: false },
-  
+  {
+    type: "text",
+    label: "Passport Number",
+    placeholder: "Enter your passport number",
+    required: false,
+  },
+  {
+    type: "text",
+    label: "Aadhar Number",
+    placeholder: "Enter your Aadhar number",
+    required: false,
+  },
+  {
+    type: "text",
+    label: "PAN Number",
+    placeholder: "Enter your PAN number",
+    required: false,
+  },
+  {
+    type: "text",
+    label: "Driving License",
+    placeholder: "Enter your driving license number",
+    required: false,
+  },
+
   // Health & Accessibility
-  { type: "select", label: "Physical Disabilities", options: ["None", "Mobility", "Visual", "Hearing", "Cognitive", "Other"], required: false },
-  { type: "textarea", label: "Accessibility Requirements", placeholder: "Describe any accessibility requirements", required: false },
-  { type: "select", label: "Dietary Restrictions", options: ["None", "Vegetarian", "Vegan", "Gluten-free", "Dairy-free", "Nut-free", "Halal", "Kosher", "Other"], required: false },
-  { type: "textarea", label: "Medical Conditions", placeholder: "Any medical conditions we should be aware of", required: false },
-  
+  {
+    type: "select",
+    label: "Physical Disabilities",
+    options: ["None", "Mobility", "Visual", "Hearing", "Cognitive", "Other"],
+    required: false,
+  },
+  {
+    type: "textarea",
+    label: "Accessibility Requirements",
+    placeholder: "Describe any accessibility requirements",
+    required: false,
+  },
+  {
+    type: "select",
+    label: "Dietary Restrictions",
+    options: [
+      "None",
+      "Vegetarian",
+      "Vegan",
+      "Gluten-free",
+      "Dairy-free",
+      "Nut-free",
+      "Halal",
+      "Kosher",
+      "Other",
+    ],
+    required: false,
+  },
+  {
+    type: "textarea",
+    label: "Medical Conditions",
+    placeholder: "Any medical conditions we should be aware of",
+    required: false,
+  },
+
   // Emergency Contact
-  { type: "text", label: "Emergency Contact Name", placeholder: "Enter emergency contact name", required: false },
-  { type: "phone", label: "Emergency Contact Phone", placeholder: "Enter emergency contact phone", required: false },
-  { type: "text", label: "Relationship to Emergency Contact", placeholder: "e.g., Spouse, Parent, Friend", required: false },
-  
+  {
+    type: "text",
+    label: "Emergency Contact Name",
+    placeholder: "Enter emergency contact name",
+    required: false,
+  },
+  {
+    type: "phone",
+    label: "Emergency Contact Phone",
+    placeholder: "Enter emergency contact phone",
+    required: false,
+  },
+  {
+    type: "text",
+    label: "Relationship to Emergency Contact",
+    placeholder: "e.g., Spouse, Parent, Friend",
+    required: false,
+  },
+
   // Event Specific
-  { type: "select", label: "How did you hear about this event?", options: ["Social Media", "Email", "Friend/Family", "Website", "Advertisement", "Other"], required: false },
-  { type: "checkbox", label: "I agree to receive updates about future events", options: ["Yes"], required: false },
-  { type: "checkbox", label: "I agree to the terms and conditions", options: ["Yes"], required: true },
-  { type: "checkbox", label: "I consent to photos/videos being taken", options: ["Yes"], required: false },
-  
+  {
+    type: "select",
+    label: "How did you hear about this event?",
+    options: [
+      "Social Media",
+      "Email",
+      "Friend/Family",
+      "Website",
+      "Advertisement",
+      "Other",
+    ],
+    required: false,
+  },
+  {
+    type: "checkbox",
+    label: "I agree to receive updates about future events",
+    options: ["Yes"],
+    required: false,
+  },
+  {
+    type: "checkbox",
+    label: "I agree to the terms and conditions",
+    options: ["Yes"],
+    required: true,
+  },
+  {
+    type: "checkbox",
+    label: "I consent to photos/videos being taken",
+    options: ["Yes"],
+    required: false,
+  },
+
   // Custom Fields
-  { type: "textarea", label: "Additional Comments", placeholder: "Any additional information you'd like to share", required: false },
-  { type: "file", label: "Upload Document", placeholder: "Upload any relevant documents", required: false },
+  {
+    type: "textarea",
+    label: "Additional Comments",
+    placeholder: "Any additional information you'd like to share",
+    required: false,
+  },
+  {
+    type: "file",
+    label: "Upload Document",
+    placeholder: "Upload any relevant documents",
+    required: false,
+  },
 ];

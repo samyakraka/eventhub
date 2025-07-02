@@ -69,14 +69,14 @@ export function EventRegistrationDialog({
   useEffect(() => {
     const fetchCustomForm = async () => {
       if (!event.id) return;
-      
+
       try {
         const q = query(
           collection(db, "customForms"),
           where("eventId", "==", event.id)
         );
         const querySnapshot = await getDocs(q);
-        
+
         if (!querySnapshot.empty) {
           const formDoc = querySnapshot.docs[0];
           const formData = {
@@ -200,7 +200,9 @@ export function EventRegistrationDialog({
     }
   }, [open, user, getUserProfile]);
 
-  const handleRegistrationSubmit = async (registrationData: Record<string, any>) => {
+  const handleRegistrationSubmit = async (
+    registrationData: Record<string, any>
+  ) => {
     if (!user) return;
     setLoading(true);
     try {
@@ -267,7 +269,14 @@ export function EventRegistrationDialog({
         const phoneNumber = registrationData.phone || formData.phone;
         const ticketId = ticketData.qrCode; // Use QR code as ticketId for now (since addDoc returns nothing)
         const ticketLink = `${window.location.origin}/my-tickets/${ticketId}`;
-        const whatsappMessage = `📢 Greetings from EventHub!\n\nYou're all set for *${event.title}* 🎉\n\n📅 *Date:* ${format(event.date, "MMM dd, yyyy")}\n🕒 *Time:* ${event.time}\n📍 *Venue:* ${event.isVirtual ? "Virtual Event" : event.location}\n\n🎟️ *Ticket ID:* ${ticketId}\n🔳 *QR Code Data:* ${ticketId}\n\n🔗 *View your ticket:* ${ticketLink}\n\nNeed Help? Contact us at support@eventhub.com\n\nThanks for registering with EventHub — we'll see you at the event! 🎶`;
+        const whatsappMessage = `📢 Greetings from EventHub!\n\nYou're all set for *${
+          event.title
+        }* 🎉\n\n📅 *Date:* ${format(
+          event.startDate,
+          "MMM dd, yyyy"
+        )}\n🕒 *Time:* ${event.time}\n📍 *Venue:* ${
+          event.isVirtual ? "Virtual Event" : event.location
+        }\n\n🎟️ *Ticket ID:* ${ticketId}\n🔳 *QR Code Data:* ${ticketId}\n\n🔗 *View your ticket:* ${ticketLink}\n\nNeed Help? Contact us at support@eventhub.com\n\nThanks for registering with EventHub — we'll see you at the event! 🎶`;
         try {
           await fetch("/api/send-whatsapp", {
             method: "POST",
@@ -294,9 +303,14 @@ export function EventRegistrationDialog({
             <h2 style="color:#3B82F6;">📢 Greetings from <span style='background: #FFEB3B; color: #222; padding: 2px 6px; border-radius: 4px;'>EventHub</span>!</h2>
             <p>You're all set for <b>${event.title}</b> 🎉</p>
             <ul style="list-style:none; padding:0;">
-              <li>📅 <b>Date:</b> ${format(event.date, "MMM dd, yyyy")}</li>
+              <li>📅 <b>Date:</b> ${format(
+                event.startDate,
+                "MMM dd, yyyy"
+              )}</li>
               <li>🕒 <b>Time:</b> ${event.time}</li>
-              <li>📍 <b>Venue:</b> ${event.isVirtual ? "Virtual Event" : event.location}</li>
+              <li>📍 <b>Venue:</b> ${
+                event.isVirtual ? "Virtual Event" : event.location
+              }</li>
             </ul>
             <p>🎟️ <b>Ticket ID:</b> ${ticketId}<br/>
             🔳 <b>QR Code Data:</b> ${ticketId}</p>
@@ -315,7 +329,13 @@ export function EventRegistrationDialog({
               to: email,
               subject: `Your Ticket for ${event.title}`,
               html: emailHtml,
-              text: `Greetings from EventHub!\n\nYou're all set for ${event.title} 🎉\n\nDate: ${format(event.date, "MMM dd, yyyy")}\nTime: ${event.time}\nVenue: ${event.isVirtual ? "Virtual Event" : event.location}\n\nTicket ID: ${ticketId}\nQR Code Data: ${ticketId}\n\nView your ticket: ${ticketLink}\n\nNeed Help? Contact us at support@eventhub.com\n\nThanks for registering with EventHub — we'll see you at the event! 🎶`,
+              text: `Greetings from EventHub!\n\nYou're all set for ${
+                event.title
+              } 🎉\n\nDate: ${format(event.startDate, "MMM dd, yyyy")}\nTime: ${
+                event.time
+              }\nVenue: ${
+                event.isVirtual ? "Virtual Event" : event.location
+              }\n\nTicket ID: ${ticketId}\nQR Code Data: ${ticketId}\n\nView your ticket: ${ticketLink}\n\nNeed Help? Contact us at support@eventhub.com\n\nThanks for registering with EventHub — we'll see you at the event! 🎶`,
             }),
           });
         } catch (error) {
@@ -334,10 +354,17 @@ export function EventRegistrationDialog({
         };
         await addDoc(collection(db, "donations"), donationData);
         // Send thank you email for donation
-        if ((registrationData.email || formData.email) && (registrationData.email || formData.email).length > 0) {
+        if (
+          (registrationData.email || formData.email) &&
+          (registrationData.email || formData.email).length > 0
+        ) {
           const email = registrationData.email || formData.email;
           const subject = `Thank You for Your Donation to ${event.title}`;
-          const emailText = `\n🙏 Thank you for your generous donation!\n\nEvent: ${event.title}\nAmount: $${donationAmount.toFixed(2)}\n\nYour support helps us make this event even better.\n\nIf you have any questions, contact us at support@eventhub.com.\n\nWith gratitude,\nThe EventHub Team`;
+          const emailText = `\n🙏 Thank you for your generous donation!\n\nEvent: ${
+            event.title
+          }\nAmount: $${donationAmount.toFixed(
+            2
+          )}\n\nYour support helps us make this event even better.\n\nIf you have any questions, contact us at support@eventhub.com.\n\nWith gratitude,\nThe EventHub Team`;
           const emailHtml = `
             <div style="font-family: Arial, sans-serif; color: #222;">
               <h2 style="color:#16A34A;">🙏 Thank You for Your Donation!</h2>
@@ -349,13 +376,18 @@ export function EventRegistrationDialog({
             </div>
           `;
           try {
-            await fetch('/api/send-email', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ to: email, subject, text: emailText, html: emailHtml })
+            await fetch("/api/send-email", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                to: email,
+                subject,
+                text: emailText,
+                html: emailHtml,
+              }),
             });
           } catch (err) {
-            console.error('Donation thank you email failed:', err);
+            console.error("Donation thank you email failed:", err);
           }
         }
       }
@@ -397,12 +429,14 @@ export function EventRegistrationDialog({
   };
 
   const copyEventLink = () => {
-    navigator.clipboard.writeText(`${window.location.origin}/events/${event.id}`).then(() => {
-      toast({
-        title: "Link Copied!",
-        description: "Event link copied to clipboard",
+    navigator.clipboard
+      .writeText(`${window.location.origin}/events/${event.id}`)
+      .then(() => {
+        toast({
+          title: "Link Copied!",
+          description: "Event link copied to clipboard",
+        });
       });
-    });
   };
 
   const handleClose = () => {
@@ -478,11 +512,24 @@ export function EventRegistrationDialog({
                 </div>
                 {(customFormData.phone || formData.phone) && (
                   <div className="flex items-center justify-center bg-green-50 border border-green-200 rounded-lg p-3 mt-4">
-                    <svg className="w-5 h-5 text-green-600 mr-2" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    <svg
+                      className="w-5 h-5 text-green-600 mr-2"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M5 13l4 4L19 7"
+                      />
                     </svg>
                     <span className="text-green-800 font-medium">
-                      Ticket details have been sent to your WhatsApp number: <span className="font-mono">{customFormData.phone || formData.phone}</span>
+                      Ticket details have been sent to your WhatsApp number:{" "}
+                      <span className="font-mono">
+                        {customFormData.phone || formData.phone}
+                      </span>
                     </span>
                   </div>
                 )}
@@ -497,7 +544,7 @@ export function EventRegistrationDialog({
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div className="flex items-center">
                   <Calendar className="w-4 h-4 mr-2 text-gray-500" />
-                  {format(event.date, "MMM dd, yyyy")}
+                  {format(event.startDate, "MMM dd, yyyy")}
                 </div>
                 <div className="flex items-center">
                   <Clock className="w-4 h-4 mr-2 text-gray-500" />
@@ -556,7 +603,7 @@ export function EventRegistrationDialog({
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div className="flex items-center">
                   <Calendar className="w-4 h-4 mr-2 text-gray-500" />
-                  {format(event.date, "MMM dd, yyyy")}
+                  {format(event.startDate, "MMM dd, yyyy")}
                 </div>
                 <div className="flex items-center">
                   <Clock className="w-4 h-4 mr-2 text-gray-500" />
@@ -638,7 +685,9 @@ export function EventRegistrationDialog({
                       id="email"
                       type="email"
                       value={formData.email}
-                      onChange={(e) => handleInputChange("email", e.target.value)}
+                      onChange={(e) =>
+                        handleInputChange("email", e.target.value)
+                      }
                       required
                     />
                   </div>
@@ -649,7 +698,9 @@ export function EventRegistrationDialog({
                       id="phone"
                       type="tel"
                       value={formData.phone}
-                      onChange={(e) => handleInputChange("phone", e.target.value)}
+                      onChange={(e) =>
+                        handleInputChange("phone", e.target.value)
+                      }
                     />
                   </div>
 
@@ -669,7 +720,9 @@ export function EventRegistrationDialog({
                   {/* Discount Code Section */}
                   {event.discountEnabled && (
                     <div className="space-y-2">
-                      <Label htmlFor="discountCode">Discount Code (Optional)</Label>
+                      <Label htmlFor="discountCode">
+                        Discount Code (Optional)
+                      </Label>
                       <Input
                         id="discountCode"
                         value={discountCode}
@@ -688,7 +741,9 @@ export function EventRegistrationDialog({
                       min="0"
                       step="0.01"
                       value={donationAmount}
-                      onChange={(e) => setDonationAmount(Number(e.target.value))}
+                      onChange={(e) =>
+                        setDonationAmount(Number(e.target.value))
+                      }
                       placeholder="0.00"
                     />
                     <p className="text-sm text-gray-600 mt-1">
@@ -700,7 +755,9 @@ export function EventRegistrationDialog({
                   <div className="bg-gray-50 rounded-lg p-4">
                     <div className="flex justify-between items-center mb-2">
                       <span className="text-gray-600">Ticket Price:</span>
-                      <span className="font-medium">${event.ticketPrice.toFixed(2)}</span>
+                      <span className="font-medium">
+                        ${event.ticketPrice.toFixed(2)}
+                      </span>
                     </div>
                     {discountAmount > 0 && (
                       <div className="flex justify-between items-center mb-2 text-green-600">
@@ -728,11 +785,7 @@ export function EventRegistrationDialog({
                     </Label>
                   </div>
 
-                  <Button
-                    type="submit"
-                    className="w-full"
-                    disabled={loading}
-                  >
+                  <Button type="submit" className="w-full" disabled={loading}>
                     {loading ? "Processing..." : "Complete Registration"}
                   </Button>
                 </form>

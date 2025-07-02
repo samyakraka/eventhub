@@ -93,12 +93,20 @@ export function HomePage({
         limit(12)
       );
       const querySnapshot = await getDocs(q);
-      const eventsData = querySnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-        date: doc.data().date.toDate(),
-        createdAt: doc.data().createdAt.toDate(),
-      })) as Event[];
+      const eventsData = querySnapshot.docs.map((doc) => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data,
+          startDate: data.startDate
+            ? data.startDate.toDate()
+            : data.date?.toDate() || new Date(),
+          endDate: data.endDate
+            ? data.endDate.toDate()
+            : data.date?.toDate() || new Date(),
+          createdAt: data.createdAt.toDate(),
+        };
+      }) as Event[];
 
       // Fetch registration counts for each event
       const eventsWithStats = await Promise.all(
@@ -139,11 +147,11 @@ export function HomePage({
         // Calculate days until event
         const daysUntilA = Math.max(
           0,
-          (a.date.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+          (a.startDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
         );
         const daysUntilB = Math.max(
           0,
-          (b.date.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+          (b.startDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
         );
 
         // Score calculation: registration weight + recency weight
@@ -179,7 +187,7 @@ export function HomePage({
         if (totalScoreB !== totalScoreA) {
           return totalScoreB - totalScoreA;
         }
-        return a.date.getTime() - b.date.getTime();
+        return a.startDate.getTime() - b.startDate.getTime();
       });
 
       setEvents(eventsWithStats);
@@ -204,8 +212,12 @@ export function HomePage({
   });
 
   const today = startOfDay(new Date());
-  const upcomingEvents = filteredEvents.filter(event => !isBefore(event.date, today));
-  const pastEvents = filteredEvents.filter(event => isBefore(event.date, today));
+  const upcomingEvents = filteredEvents.filter(
+    (event) => !isBefore(event.startDate, today)
+  );
+  const pastEvents = filteredEvents.filter((event) =>
+    isBefore(event.startDate, today)
+  );
   const featuredEvents = upcomingEvents.slice(0, 3);
   const regularEvents = upcomingEvents.slice(3);
 
@@ -841,7 +853,9 @@ export function HomePage({
                   <Star className="w-6 h-6 sm:w-8 sm:h-8 text-yellow-500 mr-3" />
                   Featured Events
                 </h3>
-                <p className="text-gray-400 hidden sm:block">Handpicked amazing experiences you won't want to miss</p>
+                <p className="text-gray-400 hidden sm:block">
+                  Handpicked amazing experiences you won't want to miss
+                </p>
               </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
@@ -892,7 +906,7 @@ export function HomePage({
                         <div className="flex items-center text-sm sm:text-base text-gray-400">
                           <Calendar className="w-4 h-4 mr-3 flex-shrink-0 text-blue-400" />
                           <span className="truncate font-medium">
-                            {format(event.date, "MMM dd, yyyy")}
+                            {format(event.startDate, "MMM dd, yyyy")}
                           </span>
                         </div>
                         <div className="flex items-center text-sm sm:text-base text-gray-400">
@@ -956,8 +970,12 @@ export function HomePage({
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 sm:mb-12 space-y-4 sm:space-y-0">
             <div>
-              <h3 className="text-2xl sm:text-3xl font-bold text-white mb-2">All Events</h3>
-              <p className="text-gray-400 hidden sm:block">Explore all upcoming experiences</p>
+              <h3 className="text-2xl sm:text-3xl font-bold text-white mb-2">
+                All Events
+              </h3>
+              <p className="text-gray-400 hidden sm:block">
+                Explore all upcoming experiences
+              </p>
             </div>
             <div className="flex items-center text-sm text-gray-400 bg-gray-800 px-4 py-2 rounded-full border border-gray-700">
               <Users className="w-4 h-4 mr-2" />
@@ -1025,7 +1043,7 @@ export function HomePage({
                         <div className="flex items-center text-sm sm:text-base text-gray-400">
                           <Calendar className="w-4 h-4 mr-3 flex-shrink-0 text-blue-400" />
                           <span className="truncate font-medium">
-                            {format(event.date, "MMM dd, yyyy")}
+                            {format(event.startDate, "MMM dd, yyyy")}
                           </span>
                         </div>
                         <div className="flex items-center text-sm sm:text-base text-gray-400">
@@ -1112,7 +1130,9 @@ export function HomePage({
                   <Zap className="w-6 h-6 sm:w-8 sm:h-8 text-yellow-400 mr-3" />
                   Event Highlights
                 </h3>
-                <p className="text-gray-400 hidden sm:block">Relive our most memorable past events</p>
+                <p className="text-gray-400 hidden sm:block">
+                  Relive our most memorable past events
+                </p>
               </div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
@@ -1134,18 +1154,25 @@ export function HomePage({
                       </div>
                     )}
                     <div className="absolute top-4 right-4">
-                      <Badge variant="outline" className="bg-gray-700 backdrop-blur-sm text-sm font-medium text-white border-gray-600">
+                      <Badge
+                        variant="outline"
+                        className="bg-gray-700 backdrop-blur-sm text-sm font-medium text-white border-gray-600"
+                      >
                         {event.type}
                       </Badge>
                     </div>
                   </div>
                   <CardContent className="p-6 sm:p-8 flex flex-col flex-1">
-                    <h3 className="text-lg font-bold mb-2 line-clamp-2 text-white">{event.title}</h3>
-                    <p className="text-gray-300 text-sm mb-4 line-clamp-2">{event.description}</p>
+                    <h3 className="text-lg font-bold mb-2 line-clamp-2 text-white">
+                      {event.title}
+                    </h3>
+                    <p className="text-gray-300 text-sm mb-4 line-clamp-2">
+                      {event.description}
+                    </p>
                     <div className="flex flex-col gap-2 mb-4">
                       <div className="flex items-center text-blue-200 text-sm">
                         <Calendar className="w-4 h-4 mr-2" />
-                        {format(event.date, "MMM dd, yyyy")}
+                        {format(event.startDate, "MMM dd, yyyy")}
                       </div>
                       <div className="flex items-center text-blue-200 text-sm">
                         <Clock className="w-4 h-4 mr-2" />
@@ -1156,7 +1183,10 @@ export function HomePage({
                         {event.isVirtual ? "Virtual Event" : event.location}
                       </div>
                     </div>
-                    <Button className="w-full bg-gray-400 text-white font-bold mt-auto cursor-not-allowed" disabled>
+                    <Button
+                      className="w-full bg-gray-400 text-white font-bold mt-auto cursor-not-allowed"
+                      disabled
+                    >
                       Event Ended
                     </Button>
                   </CardContent>

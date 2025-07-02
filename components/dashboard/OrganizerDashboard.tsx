@@ -75,13 +75,21 @@ export function OrganizerDashboard() {
         where("organizerUid", "==", user.uid)
       );
       const querySnapshot = await getDocs(q);
-      const eventsData = querySnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-        date: doc.data().date.toDate(),
-        createdAt: doc.data().createdAt.toDate(),
-        registrationCount: 0, // Default value for consistency
-      })) as unknown as Event[];
+      const eventsData = querySnapshot.docs.map((doc) => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data,
+          startDate: data.startDate
+            ? data.startDate.toDate()
+            : data.date?.toDate() || new Date(),
+          endDate: data.endDate
+            ? data.endDate.toDate()
+            : data.date?.toDate() || new Date(),
+          createdAt: data.createdAt.toDate(),
+          registrationCount: 0, // Default value for consistency
+        };
+      }) as unknown as Event[];
 
       eventsData.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
       setEvents(eventsData);
@@ -481,7 +489,7 @@ export function OrganizerDashboard() {
                         <div className="flex flex-wrap items-center gap-4 text-sm text-gray-400">
                           <span className="flex items-center">
                             <Calendar className="w-4 h-4 mr-1" />
-                            {format(event.date, "MMM dd, yyyy")}
+                            {format(event.startDate, "MMM dd, yyyy")}
                           </span>
                           <span>{event.time}</span>
                           <span className="truncate">

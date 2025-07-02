@@ -62,7 +62,8 @@ export function EditEventDialog({
     type: "",
     location: "",
     virtualLink: "",
-    date: "",
+    startDate: "",
+    endDate: "",
     time: "",
     endTime: "",
     themeColor: "#3B82F6",
@@ -94,7 +95,8 @@ export function EditEventDialog({
         type: event.type,
         location: event.location || "",
         virtualLink: event.virtualLink || "",
-        date: format(event.date, "yyyy-MM-dd"),
+        startDate: format(event.startDate, "yyyy-MM-dd"),
+        endDate: format(event.endDate, "yyyy-MM-dd"),
         time: event.time,
         endTime: event.endTime,
         themeColor: event.themeColor,
@@ -151,7 +153,8 @@ export function EditEventDialog({
     try {
       const updateData = {
         ...formData,
-        date: new Date(formData.date),
+        startDate: new Date(formData.startDate),
+        endDate: new Date(formData.endDate),
         ticketPrice: Number(formData.ticketPrice),
         maxAttendees: formData.maxAttendees
           ? Number(formData.maxAttendees)
@@ -195,7 +198,8 @@ export function EditEventDialog({
         return formData.title && formData.description && formData.type;
       case 2:
         return (
-          formData.date &&
+          formData.startDate &&
+          formData.endDate &&
           formData.time &&
           formData.endTime &&
           (formData.isVirtual || formData.location)
@@ -449,16 +453,37 @@ export function EditEventDialog({
                 </div>
               )}
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div>
-                  <Label htmlFor="date" className="text-base font-semibold">
-                    Date *
+                  <Label
+                    htmlFor="startDate"
+                    className="text-base font-semibold"
+                  >
+                    Start Date *
                   </Label>
                   <Input
-                    id="date"
+                    id="startDate"
                     type="date"
-                    value={formData.date}
-                    onChange={(e) => handleInputChange("date", e.target.value)}
+                    value={formData.startDate}
+                    onChange={(e) =>
+                      handleInputChange("startDate", e.target.value)
+                    }
+                    className="mt-2 h-12"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="endDate" className="text-base font-semibold">
+                    End Date *
+                  </Label>
+                  <Input
+                    id="endDate"
+                    type="date"
+                    value={formData.endDate}
+                    onChange={(e) =>
+                      handleInputChange("endDate", e.target.value)
+                    }
                     className="mt-2 h-12"
                     required
                   />
@@ -788,7 +813,9 @@ export function EditEventDialog({
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div className="flex items-center space-x-2">
                       <Calendar className="w-4 h-4 text-gray-500" />
-                      <span>{formData.date}</span>
+                      <span>
+                        {formData.startDate} - {formData.endDate}
+                      </span>
                     </div>
                     <div className="flex items-center space-x-2">
                       <Clock className="w-4 h-4 text-gray-500" />

@@ -81,11 +81,17 @@ export default function EventPage() {
     try {
       const eventDoc = await getDoc(doc(db, "events", eventId));
       if (eventDoc.exists()) {
+        const data = eventDoc.data();
         const eventData = {
           id: eventDoc.id,
-          ...eventDoc.data(),
-          date: eventDoc.data().date.toDate(),
-          createdAt: eventDoc.data().createdAt.toDate(),
+          ...data,
+          startDate: data.startDate
+            ? data.startDate.toDate()
+            : data.date?.toDate() || new Date(),
+          endDate: data.endDate
+            ? data.endDate.toDate()
+            : data.date?.toDate() || new Date(),
+          createdAt: data.createdAt.toDate(),
           registrationCount: 0, // Default value for consistency
         } as Event;
         setEvent(eventData);
@@ -341,7 +347,8 @@ export default function EventPage() {
                     <div>
                       <p className="text-sm text-gray-500">Date</p>
                       <p className="font-semibold">
-                        {format(event.date, "EEEE, MMMM dd, yyyy")}
+                        {format(event.startDate, "EEEE, MMMM dd, yyyy")} -{" "}
+                        {format(event.endDate, "EEEE, MMMM dd, yyyy")}
                       </p>
                     </div>
                   </div>
@@ -404,7 +411,8 @@ export default function EventPage() {
                       <li className="flex items-center gap-3">
                         <Calendar className="w-5 h-5 text-purple-500 flex-shrink-0" />
                         <span>
-                          Date: {format(event.date, "PPPP")}, {event.time} -{" "}
+                          Date: {format(event.startDate, "PPPP")} -{" "}
+                          {format(event.endDate, "PPPP")}, {event.time} -{" "}
                           {event.endTime}
                         </span>
                       </li>
