@@ -15,7 +15,15 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useAuth } from "@/contexts/AuthContext";
-import { collection, addDoc, query, where, getDocs } from "firebase/firestore";
+import {
+  collection,
+  addDoc,
+  query,
+  where,
+  getDocs,
+  getDoc,
+  doc,
+} from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import type { Event, CustomForm } from "@/types";
 import { toast } from "@/hooks/use-toast";
@@ -64,6 +72,10 @@ export function EventRegistrationDialog({
   });
   const [donationAmount, setDonationAmount] = useState(0);
   const [useAutofill, setUseAutofill] = useState(false);
+  const [organizerInfo, setOrganizerInfo] = useState<{
+    displayName: string;
+    email: string;
+  } | null>(null);
 
   // Fetch custom form for this event
   useEffect(() => {
@@ -96,6 +108,34 @@ export function EventRegistrationDialog({
       fetchCustomForm();
     }
   }, [open, event.id]);
+
+  // Fetch organizer info when dialog opens
+  useEffect(() => {
+    const fetchOrganizerInfo = async () => {
+      if (!event.organizerUid || !open) return;
+
+      try {
+        const userDoc = await getDoc(doc(db, "users", event.organizerUid));
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          setOrganizerInfo({
+            displayName:
+              userData.displayName ||
+              (userData.firstName && userData.lastName
+                ? `${userData.firstName} ${userData.lastName}`
+                : "Event Organizer"),
+            email: userData.email || "",
+          });
+        }
+      } catch (error) {
+        console.error("Error fetching organizer info:", error);
+      }
+    };
+
+    if (open && event.organizerUid) {
+      fetchOrganizerInfo();
+    }
+  }, [open, event.organizerUid]);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -582,8 +622,7 @@ export function EventRegistrationDialog({
             </div>
 
             <p className="text-xs text-gray-500 mt-6">
-              Need help? Contact the event organizer or check our support
-              center.
+              Need help? Contact {organizerInfo?.displayName || "the event organizer"} or check our support center.
             </p>
           </div>
         ) : (
@@ -594,6 +633,11 @@ export function EventRegistrationDialog({
                 <DialogTitle>Register for {event.title}</DialogTitle>
                 <DialogDescription>
                   Complete your registration for this event
+                  {organizerInfo && (
+                    <span className="block mt-1 text-sm text-gray-500">
+                      Organized by {organizerInfo.displayName}
+                    </span>
+                  )}
                 </DialogDescription>
               </div>
             </DialogHeader>

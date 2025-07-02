@@ -66,6 +66,11 @@ export default function EventPage() {
   const [activeAuthTab, setActiveAuthTab] = useState<"login" | "signup">(
     "login"
   );
+  const [organizerInfo, setOrganizerInfo] = useState<{
+    displayName: string;
+    email: string;
+    role: string;
+  } | null>(null);
 
   const eventId = params.eventId as string;
 
@@ -95,11 +100,37 @@ export default function EventPage() {
           registrationCount: 0, // Default value for consistency
         } as Event;
         setEvent(eventData);
+
+        // Fetch organizer information
+        if (eventData.organizerUid) {
+          await fetchOrganizerInfo(eventData.organizerUid);
+        }
       }
     } catch (error) {
       console.error("Error fetching event:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchOrganizerInfo = async (organizerUid: string) => {
+    try {
+      const userDoc = await getDoc(doc(db, "users", organizerUid));
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        setOrganizerInfo({
+          displayName: userData.displayName || userData.firstName + " " + userData.lastName || "Event Organizer",
+          email: userData.email || "",
+          role: userData.role || "organizer"
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching organizer info:", error);
+      setOrganizerInfo({
+        displayName: "Event Organizer",
+        email: "",
+        role: "organizer"
+      });
     }
   };
 
@@ -718,11 +749,18 @@ export default function EventPage() {
                   </div>
                   <div>
                     <p className="font-semibold text-gray-900">
-                      Event Organizer
+                      {organizerInfo?.displayName || "Event Organizer"}
                     </p>
                     <p className="text-gray-600">
-                      Professional event management
+                      {organizerInfo?.role === "organizer" 
+                        ? "Professional event management" 
+                        : "Event Creator"}
                     </p>
+                    {organizerInfo?.email && (
+                      <p className="text-sm text-gray-500">
+                        {organizerInfo.email}
+                      </p>
+                    )}
                   </div>
                 </div>
               </CardContent>

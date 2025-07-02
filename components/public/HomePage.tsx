@@ -108,7 +108,7 @@ export function HomePage({
         };
       }) as Event[];
 
-      // Fetch registration counts for each event
+      // Fetch registration counts and organizer info for each event
       const eventsWithStats = await Promise.all(
         eventsData.map(async (event) => {
           try {
@@ -119,9 +119,27 @@ export function HomePage({
             const ticketsSnapshot = await getDocs(ticketsQuery);
             const registrationCount = ticketsSnapshot.size;
 
+            // Fetch organizer name
+            let organizerName = "Event Organizer";
+            if (event.organizerUid) {
+              try {
+                const userDoc = await getDoc(doc(db, "users", event.organizerUid));
+                if (userDoc.exists()) {
+                  const userData = userDoc.data();
+                  organizerName = userData.displayName || 
+                    (userData.firstName && userData.lastName 
+                      ? `${userData.firstName} ${userData.lastName}` 
+                      : "Event Organizer");
+                }
+              } catch (error) {
+                console.error(`Error fetching organizer for event ${event.id}:`, error);
+              }
+            }
+
             return {
               ...event,
               registrationCount,
+              organizerName,
             };
           } catch (error) {
             console.error(
@@ -131,6 +149,7 @@ export function HomePage({
             return {
               ...event,
               registrationCount: 0,
+              organizerName: "Event Organizer",
             };
           }
         })

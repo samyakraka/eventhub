@@ -32,6 +32,10 @@ export function EventDetailsPage({ eventId, onBack }: EventDetailsPageProps) {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [donations, setDonations] = useState<Donation[]>([]);
   const [loading, setLoading] = useState(true);
+  const [organizerInfo, setOrganizerInfo] = useState<{
+    displayName: string;
+    email: string;
+  } | null>(null);
 
   useEffect(() => {
     fetchEventDetails();
@@ -56,6 +60,21 @@ export function EventDetailsPage({ eventId, onBack }: EventDetailsPageProps) {
           registrationCount: 0, // Default value for consistency
         } as Event;
         setEvent(eventData);
+
+        // Fetch organizer information
+        if (eventData.organizerUid) {
+          const userDoc = await getDoc(doc(db, "users", eventData.organizerUid));
+          if (userDoc.exists()) {
+            const userData = userDoc.data();
+            setOrganizerInfo({
+              displayName: userData.displayName || 
+                (userData.firstName && userData.lastName 
+                  ? `${userData.firstName} ${userData.lastName}` 
+                  : "Event Organizer"),
+              email: userData.email || "",
+            });
+          }
+        }
       }
 
       // Fetch tickets - simplified query
@@ -147,6 +166,11 @@ export function EventDetailsPage({ eventId, onBack }: EventDetailsPageProps) {
                 </h1>
                 <p className="text-gray-600">
                   {format(event.date, "MMM dd, yyyy")} at {event.time}
+                  {organizerInfo && (
+                    <span className="ml-2 text-sm">
+                      • Organized by {organizerInfo.displayName}
+                    </span>
+                  )}
                 </p>
               </div>
             </div>
