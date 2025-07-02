@@ -126,7 +126,11 @@ export function CustomFormRenderer({ form, onSubmit, loading = false }: CustomFo
               {field.required && <Badge variant="destructive" className="text-xs">Required</Badge>}
             </Label>
             <Input
-              {...commonProps}
+              id={field.id}
+              value={fieldValue || ""}
+              onChange={e => handleFieldChange(field.id, e.target.value)}
+              placeholder={field.placeholder}
+              className={fieldError ? "border-red-500" : ""}
               type="text"
             />
             {fieldError && <p className="text-sm text-red-500">{fieldError}</p>}
@@ -141,7 +145,11 @@ export function CustomFormRenderer({ form, onSubmit, loading = false }: CustomFo
               {field.required && <Badge variant="destructive" className="text-xs">Required</Badge>}
             </Label>
             <Input
-              {...commonProps}
+              id={field.id}
+              value={fieldValue || ""}
+              onChange={e => handleFieldChange(field.id, e.target.value)}
+              placeholder={field.placeholder}
+              className={fieldError ? "border-red-500" : ""}
               type="email"
             />
             {fieldError && <p className="text-sm text-red-500">{fieldError}</p>}
@@ -156,7 +164,11 @@ export function CustomFormRenderer({ form, onSubmit, loading = false }: CustomFo
               {field.required && <Badge variant="destructive" className="text-xs">Required</Badge>}
             </Label>
             <Input
-              {...commonProps}
+              id={field.id}
+              value={fieldValue || ""}
+              onChange={e => handleFieldChange(field.id, e.target.value)}
+              placeholder={field.placeholder}
+              className={fieldError ? "border-red-500" : ""}
               type="tel"
             />
             {fieldError && <p className="text-sm text-red-500">{fieldError}</p>}
@@ -171,7 +183,11 @@ export function CustomFormRenderer({ form, onSubmit, loading = false }: CustomFo
               {field.required && <Badge variant="destructive" className="text-xs">Required</Badge>}
             </Label>
             <Input
-              {...commonProps}
+              id={field.id}
+              value={fieldValue || ""}
+              onChange={e => handleFieldChange(field.id, e.target.value)}
+              placeholder={field.placeholder}
+              className={fieldError ? "border-red-500" : ""}
               type="number"
               min={field.validation?.min}
               max={field.validation?.max}
@@ -188,7 +204,11 @@ export function CustomFormRenderer({ form, onSubmit, loading = false }: CustomFo
               {field.required && <Badge variant="destructive" className="text-xs">Required</Badge>}
             </Label>
             <Input
-              {...commonProps}
+              id={field.id}
+              value={fieldValue || ""}
+              onChange={e => handleFieldChange(field.id, e.target.value)}
+              placeholder={field.placeholder}
+              className={fieldError ? "border-red-500" : ""}
               type="date"
             />
             {fieldError && <p className="text-sm text-red-500">{fieldError}</p>}
@@ -280,7 +300,11 @@ export function CustomFormRenderer({ form, onSubmit, loading = false }: CustomFo
               {field.required && <Badge variant="destructive" className="text-xs">Required</Badge>}
             </Label>
             <Textarea
-              {...commonProps}
+              id={field.id}
+              value={fieldValue || ""}
+              onChange={e => handleFieldChange(field.id, e.target.value)}
+              placeholder={field.placeholder}
+              className={fieldError ? "border-red-500" : ""}
               rows={4}
             />
             {fieldError && <p className="text-sm text-red-500">{fieldError}</p>}
