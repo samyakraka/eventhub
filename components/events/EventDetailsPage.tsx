@@ -16,7 +16,14 @@ import {
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import type { Event, Ticket, Donation } from "@/types";
-import { ArrowLeft, Users, DollarSign, BarChart3, QrCode } from "lucide-react";
+import {
+  ArrowLeft,
+  Users,
+  DollarSign,
+  BarChart3,
+  QrCode,
+  Building2,
+} from "lucide-react";
 import { format } from "date-fns";
 import { QRScanner } from "../checkin/QRScanner";
 import { LiveStreamViewer } from "../virtual/LiveStreamViewer";
@@ -35,6 +42,11 @@ export function EventDetailsPage({ eventId, onBack }: EventDetailsPageProps) {
   const [organizerInfo, setOrganizerInfo] = useState<{
     displayName: string;
     email: string;
+    organizationType?: string;
+    website?: string;
+    industry?: string;
+    experience?: string;
+    specializations?: string[];
   } | null>(null);
 
   useEffect(() => {
@@ -61,20 +73,27 @@ export function EventDetailsPage({ eventId, onBack }: EventDetailsPageProps) {
         } as Event;
         setEvent(eventData);
 
-        // Fetch organizer information
+        // Fetch organizer information with profile data
         if (eventData.organizerUid) {
           const userDoc = await getDoc(
             doc(db, "users", eventData.organizerUid)
           );
           if (userDoc.exists()) {
             const userData = userDoc.data();
+            const profile = userData.profile || {};
             setOrganizerInfo({
               displayName:
+                profile.organizationName ||
                 userData.displayName ||
                 (userData.firstName && userData.lastName
                   ? `${userData.firstName} ${userData.lastName}`
                   : "Event Organizer"),
               email: userData.email || "",
+              organizationType: profile.organizationType || "",
+              website: profile.website || "",
+              industry: profile.industry || "",
+              experience: profile.eventManagementExperience || "",
+              specializations: profile.specializations || [],
             });
           }
         }
@@ -260,6 +279,7 @@ export function EventDetailsPage({ eventId, onBack }: EventDetailsPageProps) {
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="attendees">Attendees</TabsTrigger>
             <TabsTrigger value="checkin">Check-in</TabsTrigger>
+            <TabsTrigger value="organizer">Organizer Info</TabsTrigger>
             {event.isVirtual && (
               <TabsTrigger value="stream">Live Stream</TabsTrigger>
             )}
@@ -399,6 +419,86 @@ export function EventDetailsPage({ eventId, onBack }: EventDetailsPageProps) {
 
           <TabsContent value="checkin">
             <QRScanner eventId={eventId} />
+          </TabsContent>
+
+          <TabsContent value="organizer">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Building2 className="w-5 h-5 mr-2" />
+                  Organizer Information
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {organizerInfo ? (
+                  <div className="space-y-6">
+                    <div className="flex items-start space-x-4">
+                      <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
+                        <Building2 className="w-8 h-8 text-white" />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="text-xl font-bold text-gray-900">
+                          {organizerInfo.displayName}
+                        </h3>
+                        {organizerInfo.organizationType && (
+                          <p className="text-gray-600 capitalize">
+                            {organizerInfo.organizationType} Organization
+                          </p>
+                        )}
+                        {organizerInfo.industry && (
+                          <p className="text-gray-500">
+                            Industry: {organizerInfo.industry}
+                          </p>
+                        )}
+                        {organizerInfo.website && (
+                          <a
+                            href={organizerInfo.website}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:underline"
+                          >
+                            {organizerInfo.website}
+                          </a>
+                        )}
+                      </div>
+                    </div>
+
+                    {organizerInfo.experience && (
+                      <div>
+                        <h4 className="font-semibold text-gray-900 mb-2">
+                          Event Management Experience
+                        </h4>
+                        <p className="text-gray-700">
+                          {organizerInfo.experience}
+                        </p>
+                      </div>
+                    )}
+
+                    {organizerInfo.specializations &&
+                      organizerInfo.specializations.length > 0 && (
+                        <div>
+                          <h4 className="font-semibold text-gray-900 mb-2">
+                            Specializations
+                          </h4>
+                          <div className="flex flex-wrap gap-2">
+                            {organizerInfo.specializations.map(
+                              (spec, index) => (
+                                <Badge key={index} variant="outline">
+                                  {spec}
+                                </Badge>
+                              )
+                            )}
+                          </div>
+                        </div>
+                      )}
+                  </div>
+                ) : (
+                  <p className="text-gray-500">
+                    Organizer information not available
+                  </p>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {event.isVirtual && (

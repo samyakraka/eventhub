@@ -49,6 +49,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useRouter } from "next/navigation";
+import { UserProfileDialog } from "./UserProfileDialog";
 
 export function OrganizerDashboard() {
   const { user, logout } = useAuth();
@@ -62,6 +63,7 @@ export function OrganizerDashboard() {
   const [showEditEvent, setShowEditEvent] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [showUserProfile, setShowUserProfile] = useState(false);
 
   useEffect(() => {
     fetchEvents();
@@ -280,6 +282,14 @@ export function OrganizerDashboard() {
               </Button>
               <Button
                 variant="outline"
+                onClick={() => setShowUserProfile(true)}
+                className="flex items-center space-x-2 bg-[#232A45] border-[#2D365A] text-white hover:bg-gradient-to-r hover:from-blue-700 hover:to-purple-700 hover:text-white"
+              >
+                <User className="w-4 h-4" />
+                <span>Organization Profile</span>
+              </Button>
+              <Button
+                variant="outline"
                 onClick={logout}
                 className="flex items-center space-x-2 bg-[#232A45] border-[#2D365A] text-white hover:bg-gradient-to-r hover:from-blue-700 hover:to-purple-700 hover:text-white"
               >
@@ -317,6 +327,17 @@ export function OrganizerDashboard() {
               >
                 <Plus className="w-4 h-4 mr-2" />
                 Create Event
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setShowUserProfile(true);
+                  setShowMobileMenu(false);
+                }}
+                className="w-full justify-start text-white"
+              >
+                <User className="w-4 h-4 mr-2" />
+                Organization Profile
               </Button>
               <Button
                 variant="ghost"
@@ -643,6 +664,10 @@ export function OrganizerDashboard() {
           fetchRevenueData();
           setSelectedEvent(null);
         }}
+      />
+      <UserProfileDialog
+        open={showUserProfile}
+        onOpenChange={setShowUserProfile}
       />
     </div>
   );

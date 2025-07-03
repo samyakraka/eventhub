@@ -20,6 +20,49 @@ export interface UserProfile {
   autoFillEnabled?: boolean;
   emailNotifications?: boolean;
   smsNotifications?: boolean;
+  // Organization-specific fields
+  organizationName?: string;
+  organizationType?:
+    | "nonprofit"
+    | "corporate"
+    | "educational"
+    | "government"
+    | "individual"
+    | "other";
+  taxId?: string;
+  businessLicense?: string;
+  establishedYear?: number;
+  employeeCount?: "1-10" | "11-50" | "51-200" | "201-500" | "500+";
+  industry?: string;
+  businessDescription?: string;
+  socialMediaLinks?: {
+    facebook?: string;
+    twitter?: string;
+    linkedin?: string;
+    instagram?: string;
+    youtube?: string;
+  };
+  bankingDetails?: {
+    accountHolderName?: string;
+    bankName?: string;
+    accountNumber?: string;
+    routingNumber?: string;
+    swiftCode?: string;
+  };
+  contactPerson?: {
+    name?: string;
+    title?: string;
+    email?: string;
+    phone?: string;
+  };
+  eventManagementExperience?: string;
+  specializations?: string[];
+  certifications?: string[];
+  insuranceInfo?: {
+    provider?: string;
+    policyNumber?: string;
+    expiryDate?: string;
+  };
   preferences?: {
     notifications: boolean;
     emailUpdates: boolean;
