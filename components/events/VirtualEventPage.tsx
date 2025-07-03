@@ -25,6 +25,7 @@ import {
   QrCode,
   Copy,
   CheckCircle,
+  Sparkles,
 } from "lucide-react";
 import { format } from "date-fns";
 import { LiveStreamViewer } from "../virtual/LiveStreamViewer";
@@ -63,18 +64,35 @@ export function VirtualEventPage({ eventId, onBack }: VirtualEventPageProps) {
       const eventDoc = await getDoc(doc(db, "events", eventId));
       if (eventDoc.exists()) {
         const data = eventDoc.data();
-        const eventData = {
+        const eventData: Event = {
           id: eventDoc.id,
-          ...data,
+          title: data.title,
+          description: data.description,
+          type: data.type,
+          location: data.location,
+          virtualLink: data.virtualLink,
+          virtualType: data.virtualType,
           startDate: data.startDate
             ? data.startDate.toDate()
             : data.date?.toDate() || new Date(),
           endDate: data.endDate
             ? data.endDate.toDate()
             : data.date?.toDate() || new Date(),
+          time: data.time,
+          endTime: data.endTime,
+          themeColor: data.themeColor,
+          status: data.status,
+          logoBase64: data.logoBase64,
+          bannerBase64: data.bannerBase64,
+          organizerUid: data.organizerUid,
+          maxAttendees: data.maxAttendees,
+          ticketPrice: data.ticketPrice,
+          isVirtual: data.isVirtual,
+          requiresCheckIn: data.requiresCheckIn,
+          discountEnabled: data.discountEnabled,
+          discountPercentage: data.discountPercentage,
           createdAt: data.createdAt.toDate(),
-          registrationCount: 0, // Default value for consistency
-        } as Event;
+        };
         setEvent(eventData);
       }
 
@@ -117,12 +135,32 @@ export function VirtualEventPage({ eventId, onBack }: VirtualEventPageProps) {
       doc(db, "events", eventId),
       (doc) => {
         if (doc.exists()) {
-          const eventData = {
+          const data = doc.data();
+          const eventData: Event = {
             id: doc.id,
-            ...doc.data(),
-            date: doc.data().date.toDate(),
-            createdAt: doc.data().createdAt.toDate(),
-          } as Event;
+            title: data.title,
+            description: data.description,
+            type: data.type,
+            location: data.location,
+            virtualLink: data.virtualLink,
+            virtualType: data.virtualType,
+            startDate: data.startDate?.toDate() || data.date?.toDate() || new Date(),
+            endDate: data.endDate?.toDate() || data.date?.toDate() || new Date(),
+            time: data.time,
+            endTime: data.endTime,
+            themeColor: data.themeColor,
+            status: data.status,
+            logoBase64: data.logoBase64,
+            bannerBase64: data.bannerBase64,
+            organizerUid: data.organizerUid,
+            maxAttendees: data.maxAttendees,
+            ticketPrice: data.ticketPrice,
+            isVirtual: data.isVirtual,
+            requiresCheckIn: data.requiresCheckIn,
+            discountEnabled: data.discountEnabled,
+            discountPercentage: data.discountPercentage,
+            createdAt: data.createdAt.toDate(),
+          };
           setEvent(eventData);
         }
       },
@@ -281,7 +319,7 @@ export function VirtualEventPage({ eventId, onBack }: VirtualEventPageProps) {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm mb-6">
                 <div className="flex items-center text-blue-100">
                   <Calendar className="w-4 h-4 mr-2" />
-                  {format(event.date, "MMM dd, yyyy")}
+                  {format(event.startDate, "MMM dd, yyyy")}
                 </div>
                 <div className="flex items-center text-blue-100">
                   <Clock className="w-4 h-4 mr-2" />
@@ -492,7 +530,7 @@ export function VirtualEventPage({ eventId, onBack }: VirtualEventPageProps) {
                   <p className="text-sm text-yellow-700">
                     {event.status === "upcoming"
                       ? `This event will begin at ${event.time} on ${format(
-                          event.date,
+                          event.startDate,
                           "MMM dd, yyyy"
                         )}`
                       : "This event has ended. Thank you for participating!"}
