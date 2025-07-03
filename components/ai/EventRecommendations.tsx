@@ -59,7 +59,7 @@ export function EventRecommendations({ events }: EventRecommendationsProps) {
                 <div className="space-y-2 text-sm text-gray-600">
                   <div className="flex items-center gap-2">
                     <Calendar className="w-4 h-4" />
-                    <span>{format(event.date, 'MMM d, yyyy')}</span>
+                    <span>{format(event.startDate, 'MMM d, yyyy')}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <MapPin className="w-4 h-4" />
@@ -94,7 +94,7 @@ export function EventRecommendations({ events }: EventRecommendationsProps) {
                 <div className="space-y-2 text-sm text-gray-600">
                   <div className="flex items-center gap-2">
                     <Calendar className="w-4 h-4" />
-                    <span>{format(event.date, 'MMM d, yyyy')}</span>
+                    <span>{format(event.startDate, 'MMM d, yyyy')}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <MapPin className="w-4 h-4" />

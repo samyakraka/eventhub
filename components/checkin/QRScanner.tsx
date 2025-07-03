@@ -80,6 +80,7 @@ export function QRScanner({ eventId }: QRScannerProps) {
         id: doc.id,
         ...doc.data(),
         createdAt: doc.data().createdAt.toDate(),
+        checkInTime: doc.data().checkInTime?.toDate(),
       })) as Ticket[];
 
       // Get total registered tickets
@@ -93,9 +94,7 @@ export function QRScanner({ eventId }: QRScannerProps) {
       // Sort in memory by check-in time (if available) or creation date
       tickets.sort((a, b) => {
         if (a.checkInTime && b.checkInTime) {
-          return (
-            b.checkInTime.toDate().getTime() - a.checkInTime.toDate().getTime()
-          );
+          return b.checkInTime.getTime() - a.checkInTime.getTime();
         }
         return b.createdAt.getTime() - a.createdAt.getTime();
       });

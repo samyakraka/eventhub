@@ -59,18 +59,35 @@ export function EventDetailsPage({ eventId, onBack }: EventDetailsPageProps) {
       const eventDoc = await getDoc(doc(db, "events", eventId));
       if (eventDoc.exists()) {
         const data = eventDoc.data();
-        const eventData = {
+        const eventData: Event = {
           id: eventDoc.id,
-          ...data,
+          title: data.title,
+          description: data.description,
+          type: data.type,
+          location: data.location,
+          virtualLink: data.virtualLink,
+          virtualType: data.virtualType,
           startDate: data.startDate
             ? data.startDate.toDate()
             : data.date?.toDate() || new Date(),
           endDate: data.endDate
             ? data.endDate.toDate()
             : data.date?.toDate() || new Date(),
+          time: data.time,
+          endTime: data.endTime,
+          themeColor: data.themeColor,
+          status: data.status,
+          logoBase64: data.logoBase64,
+          bannerBase64: data.bannerBase64,
+          organizerUid: data.organizerUid,
+          maxAttendees: data.maxAttendees,
+          ticketPrice: data.ticketPrice,
+          isVirtual: data.isVirtual,
+          requiresCheckIn: data.requiresCheckIn,
+          discountEnabled: data.discountEnabled,
+          discountPercentage: data.discountPercentage,
           createdAt: data.createdAt.toDate(),
-          registrationCount: 0, // Default value for consistency
-        } as Event;
+        };
         setEvent(eventData);
 
         // Fetch organizer information with profile data
@@ -187,7 +204,7 @@ export function EventDetailsPage({ eventId, onBack }: EventDetailsPageProps) {
                   {event.title}
                 </h1>
                 <p className="text-gray-600">
-                  {format(event.date, "MMM dd, yyyy")} at {event.time}
+                  {format(event.startDate, "MMM dd, yyyy")} at {event.time}
                   {organizerInfo && (
                     <span className="ml-2 text-sm">
                       • Organized by {organizerInfo.displayName}
