@@ -13,9 +13,11 @@ import {
   query,
   where,
   getDocs,
+  updateDoc,
+  doc as firestoreDoc,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import type { Event, Ticket, Donation } from "@/types";
+import type { Event, Ticket, Donation, RaceCategory, TimingResult } from "@/types";
 import {
   ArrowLeft,
   Users,
@@ -27,6 +29,8 @@ import {
 import { format } from "date-fns";
 import { QRScanner } from "../checkin/QRScanner";
 import { LiveStreamViewer } from "../virtual/LiveStreamViewer";
+import { GalaAdminPanel } from './GalaAdminPanel';
+import { toast } from "@/components/ui/use-toast";
 
 interface EventDetailsPageProps {
   eventId: string;
@@ -48,6 +52,9 @@ export function EventDetailsPage({ eventId, onBack }: EventDetailsPageProps) {
     experience?: string;
     specializations?: string[];
   } | null>(null);
+
+  // Helper: is the current user the organizer?
+  const isOrganizer = user && event && user.uid === event.organizerUid;
 
   useEffect(() => {
     fetchEventDetails();
@@ -87,6 +94,13 @@ export function EventDetailsPage({ eventId, onBack }: EventDetailsPageProps) {
           discountEnabled: data.discountEnabled,
           discountPercentage: data.discountPercentage,
           createdAt: data.createdAt.toDate(),
+          raceCategories: data.raceCategories,
+          timingResults: data.timingResults,
+          routeMapUrl: data.routeMapUrl,
+          performerLineup: data.performerLineup,
+          concertSchedule: data.concertSchedule,
+          ticketTypes: data.ticketTypes,
+          liveStreamUrl: data.liveStreamUrl,
         };
         setEvent(eventData);
 
@@ -188,6 +202,15 @@ export function EventDetailsPage({ eventId, onBack }: EventDetailsPageProps) {
     0
   );
 
+  const bibToLiveStreamUrl: Record<string, string> = {};
+  if (event.timingResults && event.timingResults.length > 0 && tickets) {
+    tickets.forEach((t: any) => {
+      if (t.registrationData?.bibNumber && t.registrationData?.liveStreamUrl) {
+        bibToLiveStreamUrl[t.registrationData.bibNumber] = t.registrationData.liveStreamUrl;
+      }
+    });
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -212,6 +235,14 @@ export function EventDetailsPage({ eventId, onBack }: EventDetailsPageProps) {
                   )}
                 </p>
               </div>
+              {/* Social Sharing Buttons */}
+              {event.type === 'concert' && (
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => navigator.clipboard.writeText(window.location.href)}>Copy Link</Button>
+                  <Button variant="outline" onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(window.location.href)}`,'_blank')}>Share WhatsApp</Button>
+                  <Button variant="outline" onClick={() => window.open(`https://twitter.com/intent/tweet?url=${encodeURIComponent(window.location.href)}`,'_blank')}>Share Twitter</Button>
+                </div>
+              )}
             </div>
             <Badge
               className={
@@ -225,6 +256,21 @@ export function EventDetailsPage({ eventId, onBack }: EventDetailsPageProps) {
           </div>
         </div>
       </header>
+
+      {/* Live Stream for Concerts */}
+      {event.type === 'concert' && event.liveStreamUrl && (
+        <div className="max-w-4xl mx-auto mt-6">
+          <div className="aspect-w-16 aspect-h-9 bg-black rounded-lg overflow-hidden">
+            <iframe
+              src={event.liveStreamUrl}
+              title="Live Stream"
+              allow="autoplay; encrypted-media"
+              allowFullScreen
+              className="w-full h-full"
+            />
+          </div>
+        </div>
+      )}
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Stats Cards */}
@@ -300,6 +346,11 @@ export function EventDetailsPage({ eventId, onBack }: EventDetailsPageProps) {
             {event.isVirtual && (
               <TabsTrigger value="stream">Live Stream</TabsTrigger>
             )}
+            {/* Gala Management Tab: Only for gala events and organizers */}
+            {event.type === 'gala' && isOrganizer && (
+              <TabsTrigger value="gala-admin">Gala Management</TabsTrigger>
+            )}
+            {event.type === 'marathon' && <TabsTrigger value="leaderboard">Leaderboard</TabsTrigger>}
           </TabsList>
 
           <TabsContent value="overview">
@@ -381,6 +432,95 @@ export function EventDetailsPage({ eventId, onBack }: EventDetailsPageProps) {
                   </div>
                 </CardContent>
               </Card>
+
+              {event.type === 'marathon' && event.routeMapUrl && (
+                <div className="my-6">
+                  <h4 className="text-lg font-semibold mb-2">Route Map</h4>
+                  {event.routeMapUrl.match(/^https?:\/\//) && event.routeMapUrl.includes('google.com/maps') ? (
+                    <iframe
+                      src={event.routeMapUrl}
+                      title="Route Map"
+                      className="w-full h-96 rounded border"
+                      allowFullScreen
+                    />
+                  ) : (
+                    <img src={event.routeMapUrl} alt="Route Map" className="max-w-full rounded border" />
+                  )}
+                </div>
+              )}
+
+              {/* Concert-specific fields */}
+              {event.type === 'concert' && (
+                <>
+                  {/* Performer Lineup */}
+                  {event.performerLineup && event.performerLineup.length > 0 && (
+                    <Card className="mt-6">
+                      <CardHeader>
+                        <CardTitle>Performer Lineup</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <ul className="space-y-3">
+                          {event.performerLineup.map((p) => (
+                            <li key={p.id} className="flex flex-col md:flex-row md:items-center md:space-x-4">
+                              {p.photoUrl && <img src={p.photoUrl} alt={p.name} className="w-16 h-16 rounded-full object-cover border mb-2 md:mb-0" />}
+                              <div>
+                                <div className="font-semibold text-lg">{p.name} {p.setTime && <span className="text-xs text-gray-500">({p.setTime})</span>}</div>
+                                {p.bio && <div className="text-sm text-gray-600 mb-1">{p.bio}</div>}
+                                {p.socialLinks && p.socialLinks.length > 0 && (
+                                  <div className="flex flex-wrap gap-2 mt-1">
+                                    {p.socialLinks.map((link, idx) => (
+                                      link.url ? <a key={idx} href={link.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline text-xs">{link.platform || 'Link'}</a> : null
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      </CardContent>
+                    </Card>
+                  )}
+                  {/* Concert Schedule */}
+                  {event.concertSchedule && event.concertSchedule.length > 0 && (
+                    <Card className="mt-6">
+                      <CardHeader>
+                        <CardTitle>Concert Schedule</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <ul className="space-y-2">
+                          {event.concertSchedule.map((item, idx) => (
+                            <li key={idx} className="flex flex-col md:flex-row md:items-center md:space-x-4">
+                              <span className="font-semibold w-20">{item.time}</span>
+                              <span className="font-medium">{item.title}</span>
+                              {item.description && <span className="text-sm text-gray-600">{item.description}</span>}
+                            </li>
+                          ))}
+                        </ul>
+                      </CardContent>
+                    </Card>
+                  )}
+                  {/* Ticket Types */}
+                  {event.ticketTypes && event.ticketTypes.length > 0 && (
+                    <Card className="mt-6">
+                      <CardHeader>
+                        <CardTitle>Ticket Types</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <ul className="space-y-2">
+                          {event.ticketTypes.map((t) => (
+                            <li key={t.id} className="flex flex-col md:flex-row md:items-center md:space-x-4">
+                              <span className="font-semibold">{t.name}</span>
+                              <span className="text-blue-700">${t.price}</span>
+                              {t.description && <span className="text-sm text-gray-600">{t.description}</span>}
+                              {t.quantity && <span className="text-xs text-gray-500">({t.quantity} available)</span>}
+                            </li>
+                          ))}
+                        </ul>
+                      </CardContent>
+                    </Card>
+                  )}
+                </>
+              )}
             </div>
           </TabsContent>
 
@@ -407,7 +547,44 @@ export function EventDetailsPage({ eventId, onBack }: EventDetailsPageProps) {
                               {ticket.registrationData?.email}
                             </p>
                           </div>
+                          {ticket.registrationData?.liveStreamUrl && (
+                            <a href={ticket.registrationData.liveStreamUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline ml-2">Watch Live</a>
+                          )}
                         </div>
+                        {event.type === 'marathon' && (
+                          <div className="flex flex-col text-xs text-blue-800 mt-1">
+                            <span>Bib: {ticket.registrationData?.bibNumber || 'N/A'}</span>
+                            <span>Category: {event.raceCategories?.find((c: RaceCategory) => c.id === ticket.registrationData?.selectedCategoryId)?.name || 'N/A'}</span>
+                            <span>T-Shirt: {ticket.registrationData?.tShirtSize || 'N/A'}</span>
+                          </div>
+                        )}
+                        {event.type === 'marathon' && (
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="font-semibold text-blue-900">Kit Pickup:</span>
+                            {ticket.registrationData?.kitPickedUp ? (
+                              <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-xs">Kit Picked Up</span>
+                            ) : (
+                              <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-xs">Kit Not Picked Up</span>
+                            )}
+                            <Button
+                              size="sm"
+                              variant={ticket.registrationData?.kitPickedUp ? 'outline' : 'default'}
+                              onClick={async () => {
+                                const ticketRef = firestoreDoc(db, 'tickets', ticket.id);
+                                await updateDoc(ticketRef, {
+                                  'registrationData.kitPickedUp': !ticket.registrationData?.kitPickedUp,
+                                });
+                                toast({
+                                  title: 'Kit Pickup Updated',
+                                  description: `Kit marked as ${!ticket.registrationData?.kitPickedUp ? 'picked up' : 'not picked up'}.`,
+                                });
+                              }}
+                              className="ml-2"
+                            >
+                              {ticket.registrationData?.kitPickedUp ? 'Undo' : 'Mark as Picked Up'}
+                            </Button>
+                          </div>
+                        )}
                       </div>
                       <div className="flex items-center space-x-2">
                         <Badge
@@ -521,6 +698,58 @@ export function EventDetailsPage({ eventId, onBack }: EventDetailsPageProps) {
           {event.isVirtual && (
             <TabsContent value="stream">
               <LiveStreamViewer event={event} hasAccess={true} />
+            </TabsContent>
+          )}
+
+          {/* Gala Management Tab Content */}
+          {event.type === 'gala' && isOrganizer && (
+            <TabsContent value="gala-admin">
+              <GalaAdminPanel event={event} isOrganizer={isOrganizer} onEventUpdate={setEvent} />
+            </TabsContent>
+          )}
+
+          {event.type === 'marathon' && (
+            <TabsContent value="leaderboard" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Leaderboard</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {event.timingResults && event.timingResults.length > 0 ? (
+                    <table className="min-w-full text-sm">
+                      <thead>
+                        <tr>
+                          <th className="px-2 py-1 text-left">Pos</th>
+                          <th className="px-2 py-1 text-left">Bib</th>
+                          <th className="px-2 py-1 text-left">Name</th>
+                          <th className="px-2 py-1 text-left">Category</th>
+                          <th className="px-2 py-1 text-left">Finish Time</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {event.timingResults
+                          .sort((a, b) => a.finishTime.localeCompare(b.finishTime))
+                          .map((result, idx) => (
+                            <tr key={result.bibNumber} className="border-b">
+                              <td className="px-2 py-1">{idx + 1}</td>
+                              <td className="px-2 py-1">{result.bibNumber}</td>
+                              <td className="px-2 py-1">
+                                {/* Find runner name from tickets or registrationData if available */}N/A
+                                {bibToLiveStreamUrl[result.bibNumber] && (
+                                  <a href={bibToLiveStreamUrl[result.bibNumber]} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline ml-2">Watch Live</a>
+                                )}
+                              </td>
+                              <td className="px-2 py-1">{event.raceCategories?.find((c: RaceCategory) => c.id === result.categoryId)?.name || 'N/A'}</td>
+                              <td className="px-2 py-1">{result.finishTime}</td>
+                            </tr>
+                          ))}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <div className="text-gray-500">No results yet.</div>
+                  )}
+                </CardContent>
+              </Card>
             </TabsContent>
           )}
         </Tabs>
