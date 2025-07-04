@@ -107,6 +107,26 @@ export interface Event {
   discountEnabled: boolean;
   discountPercentage?: number;
   createdAt: Date;
+  tables?: GalaTable[];
+  auctionItems?: GalaAuctionItem[];
+  donationGoal?: number;
+  donationRaised?: number;
+  invitees?: GalaInvitee[];
+  performers?: GalaPerformer[];
+  programSchedule?: GalaProgramItem[];
+  // Marathon fields (optional, only for marathon events)
+  raceCategories?: RaceCategory[];
+  bibs?: Bib[];
+  kitInfoList?: { userId: string; kit: KitInfo }[];
+  routeMapUrl?: string;
+  schedule?: { time: string; title: string; description?: string }[];
+  timingResults?: TimingResult[];
+  performerLineup?: ConcertPerformer[];
+  concertSchedule?: { time: string; title: string; description?: string }[];
+  ticketTypes?: ConcertTicketType[];
+  seatMap?: Section[]; // For sitting tickets
+  standingSections?: StandingSection[]; // For standing tickets
+  liveStreamUrl?: string;
 }
 
 export interface Ticket {
@@ -120,6 +140,8 @@ export interface Ticket {
   discountAmount?: number;
   checkedIn: boolean;
   checkInTime?: Date;
+  checkedInOnline?: boolean;
+  onlineCheckInTime?: Date;
   registrationData: Record<string, any>;
   createdAt: Date;
 }
@@ -450,3 +472,112 @@ export const FORM_FIELD_TEMPLATES: Omit<FormField, "id" | "order">[] = [
     required: false,
   },
 ];
+
+export interface GalaTable {
+  tableNumber: number;
+  host?: string;
+  guests: string[]; // user IDs or names
+}
+
+export interface GalaAuctionItem {
+  id: string;
+  name: string;
+  description?: string;
+  startingBid: number;
+  currentBid?: number;
+  highestBidder?: string; // user ID or name
+  imageUrl?: string;
+  isClosed?: boolean;
+}
+
+export interface GalaInvitee {
+  name: string;
+  email: string;
+  isVIP?: boolean;
+  rsvpStatus?: 'invited' | 'accepted' | 'declined';
+}
+
+export interface GalaPerformer {
+  name: string;
+  bio?: string;
+  role?: string; // e.g., Speaker, Musician
+  photoUrl?: string;
+}
+
+export interface GalaProgramItem {
+  time: string; // e.g., '19:00'
+  title: string;
+  description?: string;
+}
+
+// Marathon-specific types
+export interface RaceCategory {
+  id: string;
+  name: string; // e.g., 'Full Marathon', 'Half Marathon', '10K'
+  distanceKm: number;
+  startTime: string; // ISO time string
+}
+
+export interface Bib {
+  bibNumber: string;
+  userId: string;
+  categoryId: string;
+  kitPickedUp: boolean;
+}
+
+export interface KitInfo {
+  tShirtSize: string;
+  hasTimingChip: boolean;
+  extras?: string[];
+}
+
+export interface TimingResult {
+  bibNumber: string;
+  userId: string;
+  categoryId: string;
+  startTime: string;
+  finishTime: string;
+  splits?: { [km: string]: string }; // e.g., { '5': '00:25:00' }
+}
+
+export interface ConcertPerformer {
+  id: string;
+  name: string;
+  bio?: string;
+  photoUrl?: string;
+  setTime?: string;
+  socialLinks?: { platform: string; url: string }[];
+}
+
+export interface Seat {
+  id: string;
+  label: string; // e.g., 'A1', 'B12'
+  sectionId: string;
+  isAvailable: boolean;
+}
+
+export interface Section {
+  id: string;
+  name: string; // e.g., 'Orchestra', 'Balcony'
+  seats: Seat[];
+}
+
+export interface StandingSection {
+  id: string;
+  name: string; // e.g., 'Standing Area 1'
+  capacity: number;
+  ticketsSold: number;
+}
+
+export interface ConcertTicketType {
+  id: string;
+  name: string; // e.g., 'VIP', 'General', 'Early Bird', 'Standing'
+  price: number;
+  description?: string;
+  quantity?: number;
+  seatSectionId?: string; // If this ticket is for a specific section
+  isStanding?: boolean; // If this ticket is for standing area
+  isVIP?: boolean;
+  isBackstage?: boolean;
+  isLounge?: boolean;
+}
