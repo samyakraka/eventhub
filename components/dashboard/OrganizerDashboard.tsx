@@ -49,6 +49,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useRouter } from "next/navigation";
+import { AnalyticsDashboard } from "./AnalyticsDashboard";
 import { UserProfileDialog } from "./UserProfileDialog";
 
 export function OrganizerDashboard() {
@@ -239,13 +240,8 @@ export function OrganizerDashboard() {
     );
   }
 
-  if (selectedEventId) {
-    return (
-      <EventDetailsPage
-        eventId={selectedEventId}
-        onBack={() => setSelectedEventId(null)}
-      />
-    );
+  if (selectedEventId && selectedEvent && selectedEvent.type === 'concert') {
+    return <AnalyticsDashboard event={selectedEvent} onBack={() => setSelectedEventId(null)} />;
   }
 
   return (
