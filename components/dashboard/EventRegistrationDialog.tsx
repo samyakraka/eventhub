@@ -23,9 +23,10 @@ import {
   getDocs,
   getDoc,
   doc,
+  updateDoc,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import type { Event, CustomForm } from "@/types";
+import type { Event, CustomForm, RaceCategory, KitInfo, Bib, ConcertTicketType, Section, StandingSection, Seat } from "@/types";
 import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import {
@@ -76,6 +77,13 @@ export function EventRegistrationDialog({
     displayName: string;
     email: string;
   } | null>(null);
+  const [selectedCategoryId, setSelectedCategoryId] = useState('');
+  const [tShirtSize, setTShirtSize] = useState('M');
+  const [hasTimingChip, setHasTimingChip] = useState(true);
+  const [bibNumber, setBibNumber] = useState('');
+  const [selectedTicketTypeId, setSelectedTicketTypeId] = useState('');
+  const [selectedSeatId, setSelectedSeatId] = useState('');
+  const [selectedStandingSectionId, setSelectedStandingSectionId] = useState('');
 
   // Fetch custom form for this event
   useEffect(() => {
@@ -274,19 +282,89 @@ export function EventRegistrationDialog({
         await updateUserProfile(profileData);
       }
 
+      // Marathon-specific: assign bib and kit info
+      let assignedBib = null;
+      let kitInfo = null;
+      if (event.type === 'marathon') {
+        // Assign bib number
+        const bibNum = generateBibNumber();
+        setBibNumber(bibNum);
+        assignedBib = {
+          bibNumber: bibNum,
+          userId: user.uid,
+          categoryId: selectedCategoryId,
+          kitPickedUp: false,
+        };
+        kitInfo = {
+          tShirtSize,
+          hasTimingChip,
+        };
+        // Save bib and kit info to event document
+        const eventRef = doc(db, 'events', event.id);
+        await updateDoc(eventRef, {
+          bibs: [...(event.bibs || []), assignedBib],
+          kitInfoList: [...(event.kitInfoList || []), { userId: user.uid, kit: kitInfo }],
+        });
+      }
+
+      // Concert-specific: assign ticket type
+      if (event.type === 'concert' && typeof ticketTypeObj !== 'undefined') {
+        registrationData.ticketType = ticketTypeObj!.name;
+        registrationData.ticketTypeId = ticketTypeObj!.id;
+        if (ticketTypeObj!.seatSectionId && event.seatMap) {
+          // Mark seat as taken
+          const sectionIdx = event.seatMap.findIndex(s => s.id === ticketTypeObj!.seatSectionId);
+          if (sectionIdx !== -1) {
+            const seatIdx = event.seatMap[sectionIdx].seats.findIndex(seat => seat.id === selectedSeatId);
+            if (seatIdx !== -1) {
+              event.seatMap[sectionIdx].seats[seatIdx].isAvailable = false;
+              registrationData.seatId = selectedSeatId;
+              registrationData.seatLabel = event.seatMap[sectionIdx].seats[seatIdx].label;
+              registrationData.sectionName = event.seatMap[sectionIdx].name;
+              // Save updated seatMap
+              await updateDoc(doc(db, 'events', event.id), { seatMap: event.seatMap });
+            }
+          }
+        }
+        if (ticketTypeObj!.isStanding && event.standingSections) {
+          const standingIdx = event.standingSections.findIndex(s => s.id === selectedStandingSectionId);
+          if (standingIdx !== -1 && event.standingSections[standingIdx].ticketsSold < event.standingSections[standingIdx].capacity) {
+            event.standingSections[standingIdx].ticketsSold += 1;
+            registrationData.standingSectionId = selectedStandingSectionId;
+            registrationData.standingSectionName = event.standingSections[standingIdx].name;
+            // Save updated standingSections
+            await updateDoc(doc(db, 'events', event.id), { standingSections: event.standingSections });
+          }
+        }
+      }
+
       // Create ticket with appropriate registration data
-      const ticketData = {
+      let ticketData: any = {
         eventId: event.id,
         attendeeUid: user.uid,
         qrCode: generateQRCode(),
         checkedIn: false,
-        registrationData: customForm ? registrationData : { ...formData },
+        registrationData: customForm ? registrationData : {
+          ...formData,
+          selectedCategoryId,
+          tShirtSize,
+          hasTimingChip,
+          bibNumber: assignedBib?.bibNumber,
+          kitPickedUp: false,
+        },
         discountCode: discountCode.trim() || null,
         originalPrice: event.ticketPrice,
         finalPrice: calculatedPrice,
         discountAmount: discountAmount,
         createdAt: new Date(),
       };
+      if (!customForm && event.type === 'concert' && typeof ticketTypeObj !== 'undefined') {
+        ticketData.registrationData = {
+          ...ticketData.registrationData,
+          ticketType: ticketTypeObj.name,
+          ticketTypeId: ticketTypeObj.id,
+        };
+      }
 
       await addDoc(collection(db, "tickets"), ticketData);
 
@@ -515,6 +593,20 @@ export function EventRegistrationDialog({
     }
   };
 
+  // Generate next bib number for selected category
+  const generateBibNumber = () => {
+    if (!event.bibs || !selectedCategoryId) return '';
+    const bibsForCat = event.bibs.filter((b: Bib) => b.categoryId === selectedCategoryId);
+    const nextNum = bibsForCat.length + 1;
+    return `${selectedCategoryId.slice(0, 2).toUpperCase()}${String(nextNum).padStart(4, '0')}`;
+  };
+
+  // For concert registration, determine ticketTypeObj for use in button disabled logic
+  let ticketTypeObj: ConcertTicketType | undefined = undefined;
+  if (event.type === 'concert' && event.ticketTypes && event.ticketTypes.length > 0 && selectedTicketTypeId) {
+    ticketTypeObj = event.ticketTypes.find(t => t.id === selectedTicketTypeId);
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -627,6 +719,13 @@ export function EventRegistrationDialog({
               {organizerInfo?.displayName || "the event organizer"} or check our
               support center.
             </p>
+
+            {event.type === 'marathon' && event.raceCategories && (
+              <div className="text-center mt-4">
+                <p className="text-lg font-semibold">Your Bib Number: {bibNumber}</p>
+                <p className="text-md">Category: {event.raceCategories?.find((c: RaceCategory) => c.id === selectedCategoryId)?.name}</p>
+              </div>
+            )}
           </div>
         ) : (
           // Registration Form
@@ -666,6 +765,127 @@ export function EventRegistrationDialog({
                 </div>
               </div>
             </div>
+
+            {/* Marathon-specific fields */}
+            {event.type === 'marathon' && event.raceCategories && (
+              <div className="space-y-4 mb-4">
+                <div className="space-y-2">
+                  <Label htmlFor="raceCategory">Race Category *</Label>
+                  <select
+                    id="raceCategory"
+                    value={selectedCategoryId}
+                    onChange={(e) => setSelectedCategoryId(e.target.value)}
+                    required
+                    className="w-full border rounded px-3 py-2"
+                  >
+                    <option value="">Select a category</option>
+                    {event.raceCategories.map((cat: RaceCategory) => (
+                      <option key={cat.id} value={cat.id}>
+                        {cat.name} ({cat.distanceKm}km, Start: {cat.startTime})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="tShirtSize">T-Shirt Size *</Label>
+                  <select
+                    id="tShirtSize"
+                    value={tShirtSize}
+                    onChange={(e) => setTShirtSize(e.target.value)}
+                    required
+                    className="w-full border rounded px-3 py-2"
+                  >
+                    <option value="XS">XS</option>
+                    <option value="S">S</option>
+                    <option value="M">M</option>
+                    <option value="L">L</option>
+                    <option value="XL">XL</option>
+                    <option value="XXL">XXL</option>
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="hasTimingChip">Timing Chip</Label>
+                  <input
+                    id="hasTimingChip"
+                    type="checkbox"
+                    checked={hasTimingChip}
+                    onChange={(e) => setHasTimingChip(e.target.checked)}
+                    className="mr-2"
+                  />
+                  <span>Include timing chip in kit</span>
+                </div>
+              </div>
+            )}
+
+            {/* Concert-specific fields */}
+            {event.type === 'concert' && event.ticketTypes && event.ticketTypes.length > 0 && (
+              <div className="space-y-2 mb-4">
+                <Label htmlFor="ticketType">Ticket Type *</Label>
+                <select
+                  id="ticketType"
+                  value={selectedTicketTypeId}
+                  onChange={e => setSelectedTicketTypeId(e.target.value)}
+                  required
+                  className="w-full border rounded px-3 py-2"
+                >
+                  <option value="">Select a ticket type</option>
+                  {event.ticketTypes.map((t: ConcertTicketType) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name} (${t.price}){t.quantity ? ` (${t.quantity} available)` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {event.type === 'concert' && event.ticketTypes && event.ticketTypes.length > 0 && selectedTicketTypeId && (() => {
+              if (!ticketTypeObj) return null;
+              if (ticketTypeObj.seatSectionId && event.seatMap) {
+                const section = event.seatMap.find(s => s.id === ticketTypeObj.seatSectionId);
+                if (!section) return null;
+                return (
+                  <div className="space-y-2 mb-4">
+                    <Label htmlFor="seat">Select Seat *</Label>
+                    <select
+                      id="seat"
+                      value={selectedSeatId}
+                      onChange={e => setSelectedSeatId(e.target.value)}
+                      required
+                      className="w-full border rounded px-3 py-2"
+                    >
+                      <option value="">Select a seat</option>
+                      {section.seats.map(seat => (
+                        <option key={seat.id} value={seat.id} disabled={!seat.isAvailable}>
+                          {seat.label} {seat.isAvailable ? '' : '(Taken)'}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                );
+              }
+              if (ticketTypeObj.isStanding && event.standingSections) {
+                return (
+                  <div className="space-y-2 mb-4">
+                    <Label htmlFor="standingSection">Standing Section *</Label>
+                    <select
+                      id="standingSection"
+                      value={selectedStandingSectionId}
+                      onChange={e => setSelectedStandingSectionId(e.target.value)}
+                      required
+                      className="w-full border rounded px-3 py-2"
+                    >
+                      <option value="">Select a standing section</option>
+                      {event.standingSections.map(s => (
+                        <option key={s.id} value={s.id} disabled={s.ticketsSold >= s.capacity}>
+                          {s.name} (Capacity: {s.capacity}, Sold: {s.ticketsSold})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                );
+              }
+              return null;
+            })()}
 
             {/* Custom Form or Default Form */}
             {customForm ? (
@@ -832,7 +1052,7 @@ export function EventRegistrationDialog({
                     </Label>
                   </div>
 
-                  <Button type="submit" className="w-full" disabled={loading}>
+                  <Button type="submit" className="w-full" disabled={loading || (event.type === 'concert' && (!selectedTicketTypeId || (ticketTypeObj && ticketTypeObj.seatSectionId && !selectedSeatId) || (ticketTypeObj && ticketTypeObj.isStanding && !selectedStandingSectionId)))}>
                     {loading ? "Processing..." : "Complete Registration"}
                   </Button>
                 </form>
