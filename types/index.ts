@@ -43,30 +43,26 @@ export interface UserProfile {
     youtube?: string;
   };
   bankingDetails?: {
+    // Common fields
     accountHolderName?: string;
     bankName?: string;
     accountNumber?: string;
-    routingNumber?: string;
-    swiftCode?: string;
-  };
-  contactPerson?: {
-    name?: string;
-    title?: string;
-    email?: string;
-    phone?: string;
-  };
-  eventManagementExperience?: string;
-  specializations?: string[];
-  certifications?: string[];
-  insuranceInfo?: {
-    provider?: string;
-    policyNumber?: string;
-    expiryDate?: string;
-  };
-  preferences?: {
-    notifications: boolean;
-    emailUpdates: boolean;
-    publicProfile: boolean;
+
+    // International banking fields
+    routingNumber?: string; // US
+    swiftCode?: string; // International
+    sortCode?: string; // UK
+    iban?: string; // Europe
+
+    // Indian banking fields
+    ifscCode?: string; // Indian Financial System Code
+    branchName?: string;
+    branchAddress?: string;
+    accountType?: "savings" | "current" | "salary" | "fixed_deposit" | "recurring_deposit";
+    upiId?: string; // Unified Payments Interface ID
+
+    // Regional identifier to determine which fields are relevant
+    bankingRegion?: "india" | "us" | "uk" | "europe" | "international";
   };
   createdAt?: Date;
   updatedAt?: Date;

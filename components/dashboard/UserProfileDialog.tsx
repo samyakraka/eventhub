@@ -95,6 +95,14 @@ export function UserProfileDialog({
       accountNumber: "",
       routingNumber: "",
       swiftCode: "",
+      sortCode: "",
+      iban: "",
+      ifscCode: "",
+      branchName: "",
+      branchAddress: "",
+      accountType: undefined,
+      upiId: "",
+      bankingRegion: undefined,
     },
     contactPerson: {
       name: "",
@@ -133,6 +141,14 @@ export function UserProfileDialog({
             accountNumber: "",
             routingNumber: "",
             swiftCode: "",
+            sortCode: "",
+            iban: "",
+            ifscCode: "",
+            branchName: "",
+            branchAddress: "",
+            accountType: undefined,
+            upiId: "",
+            bankingRegion: undefined,
           },
           contactPerson: profile.contactPerson || {
             name: "",
@@ -519,6 +535,29 @@ export function UserProfileDialog({
                   <CardTitle className="text-lg">Banking Details</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                  {/* Banking Region Selection */}
+                  <div className="space-y-2">
+                    <Label htmlFor="bankingRegion">Banking Region</Label>
+                    <Select
+                      onValueChange={(value) =>
+                        handleInputChange("bankingDetails.bankingRegion", value)
+                      }
+                      value={formData.bankingDetails?.bankingRegion || ""}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select banking region" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="india">India</SelectItem>
+                        <SelectItem value="us">United States</SelectItem>
+                        <SelectItem value="uk">United Kingdom</SelectItem>
+                        <SelectItem value="europe">Europe</SelectItem>
+                        <SelectItem value="international">International</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Common Banking Fields */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="bankingDetails.accountHolderName">Account Holder Name</Label>
@@ -542,17 +581,98 @@ export function UserProfileDialog({
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="bankingDetails.accountNumber">Account Number</Label>
-                      <Input
-                        id="bankingDetails.accountNumber"
-                        value={formData.bankingDetails?.accountNumber || ""}
-                        onChange={(e) =>
-                          handleInputChange("bankingDetails.accountNumber", e.target.value)
-                        }
-                      />
-                    </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="bankingDetails.accountNumber">Account Number</Label>
+                    <Input
+                      id="bankingDetails.accountNumber"
+                      value={formData.bankingDetails?.accountNumber || ""}
+                      onChange={(e) =>
+                        handleInputChange("bankingDetails.accountNumber", e.target.value)
+                      }
+                    />
+                  </div>
+
+                  {/* Indian Banking Fields */}
+                  {formData.bankingDetails?.bankingRegion === "india" && (
+                    <>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="bankingDetails.ifscCode">IFSC Code *</Label>
+                          <Input
+                            id="bankingDetails.ifscCode"
+                            value={formData.bankingDetails?.ifscCode || ""}
+                            onChange={(e) =>
+                              handleInputChange("bankingDetails.ifscCode", e.target.value)
+                            }
+                            placeholder="e.g., SBIN0001234"
+                          />
+                          <p className="text-xs text-gray-500">Required for Indian bank transfers</p>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="bankingDetails.branchName">Branch Name</Label>
+                          <Input
+                            id="bankingDetails.branchName"
+                            value={formData.bankingDetails?.branchName || ""}
+                            onChange={(e) =>
+                              handleInputChange("bankingDetails.branchName", e.target.value)
+                            }
+                            placeholder="e.g., Connaught Place Branch"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="bankingDetails.branchAddress">Branch Address</Label>
+                        <Textarea
+                          id="bankingDetails.branchAddress"
+                          value={formData.bankingDetails?.branchAddress || ""}
+                          onChange={(e) =>
+                            handleInputChange("bankingDetails.branchAddress", e.target.value)
+                          }
+                          placeholder="Complete branch address"
+                          rows={2}
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="bankingDetails.accountType">Account Type</Label>
+                          <Select
+                            onValueChange={(value) =>
+                              handleInputChange("bankingDetails.accountType", value)
+                            }
+                            value={formData.bankingDetails?.accountType || ""}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select account type" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="savings">Savings Account</SelectItem>
+                              <SelectItem value="current">Current Account</SelectItem>
+                              <SelectItem value="salary">Salary Account</SelectItem>
+                              <SelectItem value="fixed_deposit">Fixed Deposit</SelectItem>
+                              <SelectItem value="recurring_deposit">Recurring Deposit</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="bankingDetails.upiId">UPI ID (Optional)</Label>
+                          <Input
+                            id="bankingDetails.upiId"
+                            value={formData.bankingDetails?.upiId || ""}
+                            onChange={(e) =>
+                              handleInputChange("bankingDetails.upiId", e.target.value)
+                            }
+                            placeholder="e.g., yourname@paytm"
+                          />
+                          <p className="text-xs text-gray-500">For UPI-based transactions</p>
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {/* US Banking Fields */}
+                  {formData.bankingDetails?.bankingRegion === "us" && (
                     <div className="space-y-2">
                       <Label htmlFor="bankingDetails.routingNumber">Routing Number</Label>
                       <Input
@@ -561,20 +681,57 @@ export function UserProfileDialog({
                         onChange={(e) =>
                           handleInputChange("bankingDetails.routingNumber", e.target.value)
                         }
+                        placeholder="9-digit routing number"
                       />
                     </div>
-                  </div>
+                  )}
 
-                  <div className="space-y-2">
-                    <Label htmlFor="bankingDetails.swiftCode">SWIFT Code</Label>
-                    <Input
-                      id="bankingDetails.swiftCode"
-                      value={formData.bankingDetails?.swiftCode || ""}
-                      onChange={(e) =>
-                        handleInputChange("bankingDetails.swiftCode", e.target.value)
-                      }
-                    />
-                  </div>
+                  {/* UK Banking Fields */}
+                  {formData.bankingDetails?.bankingRegion === "uk" && (
+                    <div className="space-y-2">
+                      <Label htmlFor="bankingDetails.sortCode">Sort Code</Label>
+                      <Input
+                        id="bankingDetails.sortCode"
+                        value={formData.bankingDetails?.sortCode || ""}
+                        onChange={(e) =>
+                          handleInputChange("bankingDetails.sortCode", e.target.value)
+                        }
+                        placeholder="e.g., 12-34-56"
+                      />
+                    </div>
+                  )}
+
+                  {/* European Banking Fields */}
+                  {formData.bankingDetails?.bankingRegion === "europe" && (
+                    <div className="space-y-2">
+                      <Label htmlFor="bankingDetails.iban">IBAN</Label>
+                      <Input
+                        id="bankingDetails.iban"
+                        value={formData.bankingDetails?.iban || ""}
+                        onChange={(e) =>
+                          handleInputChange("bankingDetails.iban", e.target.value)
+                        }
+                        placeholder="e.g., DE89370400440532013000"
+                      />
+                    </div>
+                  )}
+
+                  {/* International/SWIFT Code for International transfers */}
+                  {(formData.bankingDetails?.bankingRegion === "international" || 
+                    formData.bankingDetails?.bankingRegion === "europe") && (
+                    <div className="space-y-2">
+                      <Label htmlFor="bankingDetails.swiftCode">SWIFT Code</Label>
+                      <Input
+                        id="bankingDetails.swiftCode"
+                        value={formData.bankingDetails?.swiftCode || ""}
+                        onChange={(e) =>
+                          handleInputChange("bankingDetails.swiftCode", e.target.value)
+                        }
+                        placeholder="e.g., SBININBB123"
+                      />
+                      <p className="text-xs text-gray-500">Required for international transfers</p>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
