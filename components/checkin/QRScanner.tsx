@@ -15,7 +15,7 @@ import {
   getDoc,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import type { Ticket, Event } from "@/types";
+import type { Ticket, Event, RaceCategory } from "@/types";
 import { QrCode, Camera, CheckCircle, User, X } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { Html5Qrcode } from "html5-qrcode";
@@ -188,10 +188,52 @@ export function QRScanner({ eventId }: QRScannerProps) {
         checkInTime: new Date(),
       });
 
-      toast({
-        title: "Check-in Successful!",
-        description: `${ticketData.registrationData?.firstName} ${ticketData.registrationData?.lastName} checked in successfully.`,
-      });
+      if (event && event.type === 'marathon') {
+        const catName = event.raceCategories?.find((c: RaceCategory) => c.id === ticketData.registrationData?.selectedCategoryId)?.name || 'N/A';
+        toast({
+          title: 'Check-in Successful!',
+          description: `Runner: ${ticketData.registrationData?.firstName || ''} ${ticketData.registrationData?.lastName || ''}\nBib: ${ticketData.registrationData?.bibNumber || 'N/A'}\nCategory: ${catName}\nT-Shirt: ${ticketData.registrationData?.tShirtSize || 'N/A'}`,
+        });
+      } else if (event && event.type === 'concert') {
+        // Concert-specific check-in logic
+        const reg = ticketData.registrationData || {};
+        let accessMsg = '';
+        let badge = '';
+        const ticketType = event.ticketTypes?.find(t => t.id === reg.ticketTypeId);
+        if (ticketType?.isVIP) {
+          accessMsg += 'VIP Access';
+          badge = 'VIP';
+        }
+        if (ticketType?.isBackstage) {
+          accessMsg += (accessMsg ? ', ' : '') + 'Backstage Access';
+          badge = badge ? badge + ', Backstage' : 'Backstage';
+        }
+        if (ticketType?.isLounge) {
+          accessMsg += (accessMsg ? ', ' : '') + 'Lounge Access';
+          badge = badge ? badge + ', Lounge' : 'Lounge';
+        }
+        if (!accessMsg) {
+          if (reg.seatId && reg.sectionName && reg.seatLabel) {
+            accessMsg = `Section: ${reg.sectionName}, Seat: ${reg.seatLabel}`;
+            badge = 'Sitting';
+          } else if (reg.standingSectionName) {
+            accessMsg = `Standing Area: ${reg.standingSectionName}`;
+            badge = 'Standing';
+          } else {
+            accessMsg = 'General Admission';
+            badge = 'General';
+          }
+        }
+        toast({
+          title: 'Check-in Successful!',
+          description: `${reg.firstName || ''} ${reg.lastName || ''} checked in. ${accessMsg}`,
+        });
+      } else {
+        toast({
+          title: 'Check-in Successful!',
+          description: `${ticketData.registrationData?.firstName} ${ticketData.registrationData?.lastName} checked in successfully.`,
+        });
+      }
 
       fetchScannedTickets();
       setManualCode("");
@@ -323,9 +365,29 @@ export function QRScanner({ eventId }: QRScannerProps) {
                 <div className="flex items-center space-x-2">
                   <User className="w-4 h-4 text-gray-500" />
                   <span className="text-sm">
-                    {ticket.registrationData?.firstName}{" "}
-                    {ticket.registrationData?.lastName}
+                    {ticket.registrationData?.firstName} {ticket.registrationData?.lastName}
                   </span>
+                  {/* Concert-specific badge */}
+                  {event?.type === 'concert' && (
+                    <>
+                      {(() => {
+                        const ticketType = event.ticketTypes?.find(t => t.id === ticket.registrationData?.ticketTypeId);
+                        return (
+                          <>
+                            {ticketType?.isVIP && <Badge className="bg-yellow-200 text-yellow-800 ml-2">VIP</Badge>}
+                            {ticketType?.isBackstage && <Badge className="bg-pink-200 text-pink-800 ml-2">Backstage</Badge>}
+                            {ticketType?.isLounge && <Badge className="bg-purple-200 text-purple-800 ml-2">Lounge</Badge>}
+                            {ticket.registrationData?.seatId && ticket.registrationData?.sectionName && ticket.registrationData?.seatLabel && !ticketType?.isVIP && !ticketType?.isBackstage && !ticketType?.isLounge && (
+                              <Badge className="bg-blue-200 text-blue-800 ml-2">Sitting</Badge>
+                            )}
+                            {ticket.registrationData?.standingSectionName && !ticketType?.isVIP && !ticketType?.isBackstage && !ticketType?.isLounge && (
+                              <Badge className="bg-green-200 text-green-800 ml-2">Standing</Badge>
+                            )}
+                          </>
+                        );
+                      })()}
+                    </>
+                  )}
                 </div>
                 <Badge className="bg-green-100 text-green-800">
                   <CheckCircle className="w-3 h-3 mr-1" />
