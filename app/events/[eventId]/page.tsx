@@ -52,6 +52,7 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { AuthPage } from "@/components/auth/AuthPage";
+import { GalaEventPage } from '@/components/events/GalaEventPage';
 
 export default function EventPage() {
   const params = useParams();
@@ -248,6 +249,11 @@ export default function EventPage() {
         </div>
       </div>
     );
+  }
+
+  // Render GalaEventPage for gala events
+  if (event.type === 'gala') {
+    return <GalaEventPage event={event} />;
   }
 
   return (
