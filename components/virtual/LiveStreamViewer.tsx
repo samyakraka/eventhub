@@ -20,9 +20,11 @@ import {
   deleteDoc,
   serverTimestamp,
   setDoc,
+  getDocs,
+  where,
 } from "firebase/firestore"
 import { db } from "@/lib/firebase"
-import type { Event, LiveChat } from "@/types"
+import type { Event, LiveChat, Ticket } from "@/types"
 import { Send, Trash2, ExternalLink, MessageCircle, Users, Play, Pause, Shield, Clock } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
 
@@ -68,6 +70,8 @@ export function LiveStreamViewer({ event, hasAccess }: LiveStreamViewerProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const syncIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const lastSyncTimeRef = useRef<number>(0)
+  const [onlineCheckedIn, setOnlineCheckedIn] = useState(false)
+  const [onlineCheckInTime, setOnlineCheckInTime] = useState<Date | null>(null)
 
   const isOrganizer = user?.uid === event.organizerUid
   const isYouTube = event.virtualLink && isYouTubeUrl(event.virtualLink)
@@ -478,6 +482,59 @@ export function LiveStreamViewer({ event, hasAccess }: LiveStreamViewerProps) {
     )
   }
 
+  useEffect(() => {
+    // Fetch if user has already checked in online for this event
+    const fetchOnlineCheckIn = async () => {
+      if (!user || !event.id) return;
+      const q = query(collection(db, "tickets"), where("eventId", "==", event.id), where("attendeeUid", "==", user.uid));
+      const snapshot = await getDocs(q);
+      if (!snapshot.empty) {
+        const ticket = snapshot.docs[0].data() as Ticket;
+        if (ticket.checkedInOnline) {
+          setOnlineCheckedIn(true);
+          setOnlineCheckInTime(ticket.onlineCheckInTime ? new Date(ticket.onlineCheckInTime) : null);
+        }
+      }
+    };
+    fetchOnlineCheckIn();
+  }, [user, event.id]);
+
+  const handleOnlineCheckIn = async () => {
+    if (!user || !event.id) return;
+    setLoading(true);
+    try {
+      const q = query(collection(db, "tickets"), where("eventId", "==", event.id), where("attendeeUid", "==", user.uid));
+      const snapshot = await getDocs(q);
+      if (!snapshot.empty) {
+        const ticketRef = doc(db, "tickets", snapshot.docs[0].id);
+        await updateDoc(ticketRef, {
+          checkedInOnline: true,
+          onlineCheckInTime: new Date(),
+        });
+        setOnlineCheckedIn(true);
+        setOnlineCheckInTime(new Date());
+        toast({
+          title: "Checked In Online!",
+          description: "Your attendance has been recorded.",
+        });
+      } else {
+        toast({
+          title: "No Ticket Found",
+          description: "You must have a ticket to check in online.",
+          variant: "destructive",
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Check-in Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (!hasAccess) {
     return (
       <Card>
@@ -535,195 +592,88 @@ export function LiveStreamViewer({ event, hasAccess }: LiveStreamViewerProps) {
 
   // For broadcast type events, show stream with chat
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      {/* Stream Section */}
-      <div className="lg:col-span-2">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <span>Live Stream</span>
-                {isOrganizer && (
-                  <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
-                    <Shield className="w-3 h-3 mr-1" />
-                    Host View
-                  </Badge>
-                )}
-              </div>
-              <div className="flex items-center space-x-2">
-                {isYouTube && (
-                  <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
-                    YouTube Live
-                  </Badge>
-                )}
-                {!isOrganizer && videoState.isPlaying && (
-                  <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse mr-1" />
-                    Live
-                  </Badge>
-                )}
-              </div>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {isYouTube ? renderYouTubeEmbed() : renderGenericEmbed()}
-
-            {/* Control instructions for organizer */}
-            {isOrganizer && isYouTube && (
-              <div className="mt-4 p-3 bg-purple-50 rounded-lg">
-                <p className="text-sm text-purple-800">
-                  <Shield className="w-4 h-4 inline mr-1" />
-                  <strong>Host Controls:</strong> You control the video for all attendees. Any play/pause actions will
-                  sync to everyone instantly.
-                </p>
-              </div>
-            )}
-
-            {/* Information for attendees */}
-            {!isOrganizer && isYouTube && (
-              <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-                <p className="text-sm text-blue-800">
-                  <Clock className="w-4 h-4 inline mr-1" />
-                  <strong>Synchronized Viewing:</strong> You're watching in sync with the host. The video timeline is
-                  automatically managed.
-                </p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+    <div className="flex flex-col md:flex-row gap-6">
+      <div className="flex-1">
+        {/* Online Check-in for Virtual Concerts */}
+        {event.type === 'concert' && event.isVirtual && event.status === 'live' && user && hasAccess && !onlineCheckedIn && (
+          <div className="mb-4">
+            <Button onClick={handleOnlineCheckIn} disabled={loading}>
+              {loading ? "Checking In..." : "Check In Online"}
+            </Button>
+          </div>
+        )}
+        {event.type === 'concert' && event.isVirtual && event.status === 'live' && user && hasAccess && onlineCheckedIn && (
+          <div className="mb-4">
+            <Badge className="bg-green-100 text-green-800">Checked In Online{onlineCheckInTime && ` at ${onlineCheckInTime.toLocaleTimeString()}`}</Badge>
+          </div>
+        )}
+        {/* Video Embed */}
+        {event.virtualLink && isYouTube && youtubeVideoId && (
+          <div className="aspect-w-16 aspect-h-9 bg-black rounded-lg overflow-hidden mb-4">
+            <iframe
+              ref={iframeRef}
+              src={`https://www.youtube.com/embed/${youtubeVideoId}?enablejsapi=1&autoplay=1`}
+              title="Live Stream"
+              allow="autoplay; encrypted-media"
+              allowFullScreen
+              className="w-full h-full"
+            />
+          </div>
+        )}
+        {/* Add other video providers as needed */}
       </div>
-
-      {/* Chat Section - Same as before */}
-      <div className="lg:col-span-1">
-        <Card className="h-[600px] flex flex-col">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center justify-between text-lg">
-              <div className="flex items-center space-x-2">
-                <MessageCircle className="w-5 h-5" />
-                <span>Live Chat</span>
-              </div>
-              <Badge variant="outline">{messages.length}</Badge>
-            </CardTitle>
+      {/* In-app Live Chat */}
+      <div className="w-full md:w-96">
+        <Card className="h-full flex flex-col">
+          <CardHeader>
+            <CardTitle>Live Chat</CardTitle>
           </CardHeader>
-
-          <CardContent className="flex-1 flex flex-col p-0">
-            {/* Messages */}
-            <ScrollArea className="flex-1 px-4">
-              <div className="space-y-3">
-                {messages.map((message) => (
-                  <div
-                    key={message.id}
-                    className="group relative p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-2 mb-1">
-                          <span className="font-medium text-sm">{message.userName}</span>
-                          {message.userId === event.organizerUid && (
-                            <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-800">
-                              <Shield className="w-3 h-3 mr-1" />
-                              Host
-                            </Badge>
-                          )}
-                          <span className="text-xs text-gray-500">
-                            {message.timestamp.toLocaleTimeString([], {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
-                          </span>
-                        </div>
-                        <p className="text-sm text-gray-700 whitespace-pre-wrap">{message.message}</p>
-
-                        {/* Reactions */}
-                        {message.reactions && Object.keys(message.reactions).length > 0 && (
-                          <div className="flex flex-wrap gap-1 mt-2">
-                            {Object.entries(message.reactions).map(([emoji, userIds]) =>
-                              userIds.length > 0 ? (
-                                <button
-                                  key={emoji}
-                                  onClick={() => addReaction(message.id, emoji)}
-                                  className={`inline-flex items-center space-x-1 px-2 py-1 rounded-full text-xs transition-colors ${
-                                    userIds.includes(user?.uid || "")
-                                      ? "bg-blue-100 text-blue-800"
-                                      : "bg-gray-100 hover:bg-gray-200"
-                                  }`}
-                                >
-                                  <span>{emoji}</span>
-                                  <span>{userIds.length}</span>
-                                </button>
-                              ) : null,
-                            )}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Actions */}
-                      <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-1">
-                        {/* Emoji Picker */}
-                        <div className="relative">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => setShowEmojiPicker(showEmojiPicker === message.id ? null : message.id)}
-                            className="h-6 w-6 p-0"
-                          >
-                            😊
+          <CardContent className="flex-1 flex flex-col">
+            <ScrollArea className="h-64 mb-2">
+              <div>
+                {messages.map((msg) => (
+                  <div key={msg.id} className="mb-2 flex items-start gap-2">
+                    <span className="font-semibold text-blue-700">{msg.userName}</span>
+                    <span className="text-gray-700">{msg.message}</span>
+                    <span className="text-xs text-gray-400">{msg.timestamp.toLocaleTimeString()}</span>
+                    {/* Emoji reactions */}
+                    {msg.reactions && (
+                      <span className="ml-2 flex gap-1">
+                        {Object.entries(msg.reactions).map(([emoji, users]) => (
+                          <Button key={emoji} size="icon" variant="ghost" onClick={() => addReaction(msg.id, emoji)}>
+                            {emoji} {users.length}
                           </Button>
-
-                          {showEmojiPicker === message.id && (
-                            <div className="absolute right-0 top-8 z-10 bg-white border rounded-lg shadow-lg p-2 flex space-x-1">
-                              {EMOJI_OPTIONS.map((emoji) => (
-                                <button
-                                  key={emoji}
-                                  onClick={() => {
-                                    addReaction(message.id, emoji)
-                                    setShowEmojiPicker(null)
-                                  }}
-                                  className="hover:bg-gray-100 p-1 rounded text-lg"
-                                >
-                                  {emoji}
-                                </button>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Delete (Host only) */}
-                        {isOrganizer && (
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => deleteMessage(message.id)}
-                            className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </Button>
-                        )}
-                      </div>
-                    </div>
+                        ))}
+                      </span>
+                    )}
+                    {/* Organizer moderation */}
+                    {isOrganizer && (
+                      <Button size="icon" variant="ghost" onClick={() => deleteMessage(msg.id)}><Trash2 className="w-4 h-4" /></Button>
+                    )}
                   </div>
                 ))}
                 <div ref={messagesEndRef} />
               </div>
             </ScrollArea>
-
-            {/* Message Input */}
-            <div className="p-4 border-t">
-              <div className="flex space-x-2">
-                <Input
-                  value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  placeholder="Type a message..."
-                  maxLength={500}
-                  className="flex-1"
-                  disabled={loading}
-                />
-                <Button onClick={sendMessage} disabled={loading || !newMessage.trim()} size="sm">
-                  <Send className="w-4 h-4" />
-                </Button>
+            {/* Emoji Picker */}
+            {showEmojiPicker && (
+              <div className="flex gap-2 mb-2">
+                {EMOJI_OPTIONS.map((emoji) => (
+                  <Button key={emoji} size="icon" variant="ghost" onClick={() => { addReaction(messages[messages.length-1]?.id, emoji); setShowEmojiPicker(null); }}>{emoji}</Button>
+                ))}
               </div>
-              <p className="text-xs text-gray-500 mt-1">{newMessage.length}/500 characters</p>
+            )}
+            {/* Message Input */}
+            <div className="flex gap-2 mt-2">
+              <Input
+                value={newMessage}
+                onChange={e => setNewMessage(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') sendMessage(); }}
+                placeholder="Type a message..."
+                className="flex-1"
+              />
+              <Button onClick={sendMessage} disabled={!newMessage.trim()}>Send</Button>
+              <Button variant="ghost" onClick={() => setShowEmojiPicker(showEmojiPicker ? null : 'picker')}><MessageCircle /></Button>
             </div>
           </CardContent>
         </Card>
