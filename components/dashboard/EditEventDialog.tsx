@@ -38,7 +38,7 @@ import {
   Percent,
   Shield,
 } from "lucide-react";
-import type { Event } from "@/types";
+import type { Event, GalaTable, GalaAuctionItem, GalaInvitee, GalaPerformer, GalaProgramItem, RaceCategory, ConcertPerformer, ConcertTicketType, Section, StandingSection, Seat } from "@/types";
 import { format } from "date-fns";
 
 interface EditEventDialogProps {
@@ -79,6 +79,63 @@ export function EditEventDialog({
     requiresCheckIn: true,
   });
 
+  const [galaTables, setGalaTables] = useState<GalaTable[]>(event?.tables || []);
+  const [galaAuctionItems, setGalaAuctionItems] = useState<GalaAuctionItem[]>(event?.auctionItems || []);
+  const [galaDonationGoal, setGalaDonationGoal] = useState(event?.donationGoal?.toString() || '');
+  const [galaInvitees, setGalaInvitees] = useState<GalaInvitee[]>(event?.invitees || []);
+  const [galaPerformers, setGalaPerformers] = useState<GalaPerformer[]>(event?.performers || []);
+  const [galaProgram, setGalaProgram] = useState<GalaProgramItem[]>(event?.programSchedule || []);
+
+  // Gala table form state
+  const [newTableNumber, setNewTableNumber] = useState('');
+  const [newTableHost, setNewTableHost] = useState('');
+  const [newTableGuests, setNewTableGuests] = useState('');
+
+  // Gala auction item form state
+  const [newAuctionName, setNewAuctionName] = useState('');
+  const [newAuctionDesc, setNewAuctionDesc] = useState('');
+  const [newAuctionStartBid, setNewAuctionStartBid] = useState('');
+
+  // Invitee form state
+  const [newInviteeName, setNewInviteeName] = useState('');
+  const [newInviteeEmail, setNewInviteeEmail] = useState('');
+  const [newInviteeVIP, setNewInviteeVIP] = useState(false);
+
+  // Performer form state
+  const [newPerformerName, setNewPerformerName] = useState('');
+  const [newPerformerRole, setNewPerformerRole] = useState('');
+  const [newPerformerBio, setNewPerformerBio] = useState('');
+  const [newPerformerPhoto, setNewPerformerPhoto] = useState('');
+
+  // Program form state
+  const [newProgramTime, setNewProgramTime] = useState('');
+  const [newProgramTitle, setNewProgramTitle] = useState('');
+  const [newProgramDesc, setNewProgramDesc] = useState('');
+
+  const [raceCategories, setRaceCategories] = useState<RaceCategory[]>(event?.raceCategories || []);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [newCategoryDistance, setNewCategoryDistance] = useState('');
+  const [newCategoryStartTime, setNewCategoryStartTime] = useState('');
+  const [routeMapUrl, setRouteMapUrl] = useState(event?.routeMapUrl || '');
+  const [marathonSchedule, setMarathonSchedule] = useState<{ time: string; title: string; description?: string }[]>(event?.schedule || []);
+  const [newScheduleTime, setNewScheduleTime] = useState('');
+  const [newScheduleTitle, setNewScheduleTitle] = useState('');
+  const [newScheduleDesc, setNewScheduleDesc] = useState('');
+
+  // Concert-specific state
+  const [performerLineup, setPerformerLineup] = useState<ConcertPerformer[]>(event?.performerLineup || []);
+  const [newPerformer, setNewPerformer] = useState({ name: '', bio: '', photoUrl: '', setTime: '', socialLinks: [{ platform: '', url: '' }] });
+  const [concertSchedule, setConcertSchedule] = useState<{ time: string; title: string; description?: string }[]>(event?.concertSchedule || []);
+  const [ticketTypes, setTicketTypes] = useState<ConcertTicketType[]>(event?.ticketTypes || []);
+  const [newTicketType, setNewTicketType] = useState({ name: '', price: '', description: '', quantity: '' });
+  const [seatMap, setSeatMap] = useState<Section[]>(event?.seatMap || []);
+  const [newSectionName, setNewSectionName] = useState('');
+  const [newSeatLabel, setNewSeatLabel] = useState('');
+  const [selectedSectionId, setSelectedSectionId] = useState('');
+  const [standingSections, setStandingSections] = useState<StandingSection[]>(event?.standingSections || []);
+  const [newStandingName, setNewStandingName] = useState('');
+  const [newStandingCapacity, setNewStandingCapacity] = useState('');
+
   const steps = [
     { id: 1, title: "Basic Info", icon: Calendar },
     { id: 2, title: "Location & Time", icon: MapPin },
@@ -111,6 +168,20 @@ export function EditEventDialog({
         virtualType: event.virtualType || "meeting",
         requiresCheckIn: event.requiresCheckIn || true,
       });
+      setGalaTables(event.tables || []);
+      setGalaAuctionItems(event.auctionItems || []);
+      setGalaDonationGoal(event.donationGoal?.toString() || '');
+      setGalaInvitees(event.invitees || []);
+      setGalaPerformers(event.performers || []);
+      setGalaProgram(event.programSchedule || []);
+      setRaceCategories(event.raceCategories || []);
+      setMarathonSchedule(event.schedule || []);
+      setRouteMapUrl(event.routeMapUrl || '');
+      setPerformerLineup(event.performerLineup || []);
+      setConcertSchedule(event.concertSchedule || []);
+      setTicketTypes(event.ticketTypes || []);
+      setSeatMap(event.seatMap || []);
+      setStandingSections(event.standingSections || []);
     }
   }, [event]);
 
@@ -151,7 +222,7 @@ export function EditEventDialog({
 
     setLoading(true);
     try {
-      const updateData = {
+      const eventData: any = {
         ...formData,
         startDate: new Date(formData.startDate),
         endDate: new Date(formData.endDate),
@@ -162,13 +233,38 @@ export function EditEventDialog({
         discountPercentage: formData.discountEnabled
           ? Number(formData.discountPercentage)
           : null,
+        status: event.status,
+        updatedAt: new Date(),
       };
+      // Add Gala fields if type is gala
+      if (formData.type === 'gala') {
+        eventData.tables = galaTables;
+        eventData.auctionItems = galaAuctionItems;
+        eventData.donationGoal = galaDonationGoal ? Number(galaDonationGoal) : undefined;
+        eventData.invitees = galaInvitees;
+        eventData.performers = galaPerformers;
+        eventData.programSchedule = galaProgram;
+      }
+      // Add Marathon fields if type is marathon
+      if (formData.type === 'marathon') {
+        eventData.raceCategories = raceCategories;
+        eventData.routeMapUrl = routeMapUrl;
+        eventData.schedule = marathonSchedule;
+      }
+      // Add concert fields if type is concert
+      if (formData.type === 'concert') {
+        eventData.performerLineup = performerLineup;
+        eventData.concertSchedule = concertSchedule;
+        eventData.ticketTypes = ticketTypes;
+        eventData.seatMap = seatMap;
+        eventData.standingSections = standingSections;
+      }
 
-      await updateDoc(doc(db, "events", event.id), updateData);
+      await updateDoc(doc(db, "events", event.id), eventData);
 
       toast({
         title: "Event Updated Successfully!",
-        description: "Your event has been updated.",
+        description: "Your event changes have been saved.",
       });
 
       onEventUpdated();
@@ -211,6 +307,186 @@ export function EditEventDialog({
       default:
         return true;
     }
+  };
+
+  // Gala table handlers
+  const addTable = () => {
+    if (!newTableNumber) return;
+    const table: GalaTable = {
+      tableNumber: parseInt(newTableNumber, 10),
+      host: newTableHost,
+      guests: newTableGuests.split(',').map((g) => g.trim()).filter(Boolean),
+    };
+    setGalaTables((prev) => [...prev, table]);
+    setNewTableNumber('');
+    setNewTableHost('');
+    setNewTableGuests('');
+  };
+  const removeTable = (tableNumber: number) => {
+    setGalaTables((prev) => prev.filter((t) => t.tableNumber !== tableNumber));
+  };
+
+  // Gala auction item handlers
+  const addAuctionItem = () => {
+    if (!newAuctionName || !newAuctionStartBid) return;
+    const item: GalaAuctionItem = {
+      id: Math.random().toString(36).substr(2, 9),
+      name: newAuctionName,
+      description: newAuctionDesc,
+      startingBid: parseFloat(newAuctionStartBid),
+      currentBid: parseFloat(newAuctionStartBid),
+      highestBidder: '',
+    };
+    setGalaAuctionItems((prev) => [...prev, item]);
+    setNewAuctionName('');
+    setNewAuctionDesc('');
+    setNewAuctionStartBid('');
+  };
+  const removeAuctionItem = (id: string) => {
+    setGalaAuctionItems((prev) => prev.filter((item) => item.id !== id));
+  };
+
+  // Invitee handlers
+  const addInvitee = () => {
+    if (!newInviteeName || !newInviteeEmail) return;
+    setGalaInvitees((prev) => [...prev, { name: newInviteeName, email: newInviteeEmail, isVIP: newInviteeVIP }]);
+    setNewInviteeName('');
+    setNewInviteeEmail('');
+    setNewInviteeVIP(false);
+  };
+  const removeInvitee = (email: string) => {
+    setGalaInvitees((prev) => prev.filter((i) => i.email !== email));
+  };
+
+  // Performer handlers
+  const addPerformer = () => {
+    if (!newPerformer.name) return;
+    setPerformerLineup(prev => [...prev, { ...newPerformer, id: `${Date.now()}-${Math.random()}` }]);
+    setNewPerformer({ name: '', bio: '', photoUrl: '', setTime: '', socialLinks: [{ platform: '', url: '' }] });
+  };
+  const removePerformer = (id: string) => {
+    setPerformerLineup(prev => prev.filter(p => p.id !== id));
+  };
+  const updatePerformerSocialLink = (idx: number, field: 'platform' | 'url', value: string) => {
+    setNewPerformer(prev => {
+      const links = [...prev.socialLinks];
+      const link = { ...links[idx] } as { platform: string; url: string };
+      link[field] = value;
+      links[idx] = link;
+      return { ...prev, socialLinks: links };
+    });
+  };
+  const addPerformerSocialLink = () => {
+    setNewPerformer(prev => ({ ...prev, socialLinks: [...prev.socialLinks, { platform: '', url: '' }] }));
+  };
+  const removePerformerSocialLink = (idx: number) => {
+    setNewPerformer(prev => ({ ...prev, socialLinks: prev.socialLinks.filter((_, i) => i !== idx) }));
+  };
+
+  // Program handlers
+  const addProgramItem = () => {
+    if (!newProgramTime || !newProgramTitle) return;
+    setGalaProgram((prev) => [...prev, { time: newProgramTime, title: newProgramTitle, description: newProgramDesc }]);
+    setNewProgramTime('');
+    setNewProgramTitle('');
+    setNewProgramDesc('');
+  };
+  const removeProgramItem = (title: string) => {
+    setGalaProgram((prev) => prev.filter((p) => p.title !== title));
+  };
+
+  // Race category handlers
+  const addRaceCategory = () => {
+    if (!newCategoryName || !newCategoryDistance || !newCategoryStartTime) return;
+    setRaceCategories((prev) => [
+      ...prev,
+      {
+        id: `${Date.now()}-${Math.random()}`,
+        name: newCategoryName,
+        distanceKm: Number(newCategoryDistance),
+        startTime: newCategoryStartTime,
+      },
+    ]);
+    setNewCategoryName('');
+    setNewCategoryDistance('');
+    setNewCategoryStartTime('');
+  };
+  const removeRaceCategory = (id: string) => {
+    setRaceCategories((prev) => prev.filter((cat) => cat.id !== id));
+  };
+
+  // Schedule handlers
+  const addScheduleItem = () => {
+    if (!newScheduleTime || !newScheduleTitle) return;
+    setMarathonSchedule((prev) => [
+      ...prev,
+      { time: newScheduleTime, title: newScheduleTitle, description: newScheduleDesc },
+    ]);
+    setNewScheduleTime('');
+    setNewScheduleTitle('');
+    setNewScheduleDesc('');
+  };
+  const removeScheduleItem = (title: string) => {
+    setMarathonSchedule((prev) => prev.filter((item) => item.title !== title));
+  };
+
+  // Concert schedule handlers
+  const addConcertScheduleItem = () => {
+    if (!newScheduleTime || !newScheduleTitle) return;
+    setConcertSchedule(prev => [...prev, { time: newScheduleTime, title: newScheduleTitle, description: newScheduleDesc }]);
+    setNewScheduleTime('');
+    setNewScheduleTitle('');
+    setNewScheduleDesc('');
+  };
+  const removeConcertScheduleItem = (title: string) => {
+    setConcertSchedule(prev => prev.filter(item => item.title !== title));
+  };
+
+  // Ticket type handlers
+  const addTicketType = () => {
+    if (!newTicketType.name || !newTicketType.price) return;
+    const ticket: ConcertTicketType = {
+      id: `${Date.now()}-${Math.random()}`,
+      name: newTicketType.name,
+      price: Number(newTicketType.price),
+      description: newTicketType.description,
+      quantity: newTicketType.quantity ? Number(newTicketType.quantity) : undefined,
+    };
+    setTicketTypes(prev => [...prev, ticket]);
+    setNewTicketType({ name: '', price: '', description: '', quantity: '' });
+  };
+  const removeTicketType = (id: string) => {
+    setTicketTypes(prev => prev.filter(t => t.id !== id));
+  };
+
+  // Section/Seat handlers
+  const addSection = () => {
+    if (!newSectionName) return;
+    setSeatMap(prev => [...prev, { id: `${Date.now()}-${Math.random()}`, name: newSectionName, seats: [] }]);
+    setNewSectionName('');
+  };
+  const removeSection = (id: string) => {
+    setSeatMap(prev => prev.filter(s => s.id !== id));
+    if (selectedSectionId === id) setSelectedSectionId('');
+  };
+  const addSeat = () => {
+    if (!selectedSectionId || !newSeatLabel) return;
+    setSeatMap(prev => prev.map(s => s.id === selectedSectionId ? { ...s, seats: [...s.seats, { id: `${Date.now()}-${Math.random()}`, label: newSeatLabel, sectionId: s.id, isAvailable: true }] } : s));
+    setNewSeatLabel('');
+  };
+  const removeSeat = (sectionId: string, seatId: string) => {
+    setSeatMap(prev => prev.map(s => s.id === sectionId ? { ...s, seats: s.seats.filter(seat => seat.id !== seatId) } : s));
+  };
+
+  // Standing section handlers
+  const addStandingSection = () => {
+    if (!newStandingName || !newStandingCapacity) return;
+    setStandingSections(prev => [...prev, { id: `${Date.now()}-${Math.random()}`, name: newStandingName, capacity: Number(newStandingCapacity), ticketsSold: 0 }]);
+    setNewStandingName('');
+    setNewStandingCapacity('');
+  };
+  const removeStandingSection = (id: string) => {
+    setStandingSections(prev => prev.filter(s => s.id !== id));
   };
 
   if (!event) return null;
@@ -866,6 +1142,396 @@ export function EditEventDialog({
             </div>
           )}
         </div>
+
+        {/* Gala-specific fields */}
+        {formData.type === 'gala' && (
+          <div className="space-y-6 mt-6">
+            <h3 className="text-lg font-bold">Gala Event Setup</h3>
+            {/* Tables */}
+            <div>
+              <h4 className="font-semibold mb-2">Tables</h4>
+              <div className="flex gap-2 mb-2">
+                <Input
+                  placeholder="Table Number"
+                  value={newTableNumber}
+                  onChange={(e) => setNewTableNumber(e.target.value)}
+                  type="number"
+                  min={1}
+                />
+                <Input
+                  placeholder="Host Name"
+                  value={newTableHost}
+                  onChange={(e) => setNewTableHost(e.target.value)}
+                />
+                <Input
+                  placeholder="Guests (comma separated)"
+                  value={newTableGuests}
+                  onChange={(e) => setNewTableGuests(e.target.value)}
+                />
+                <Button onClick={addTable}>Add Table</Button>
+              </div>
+              <ul>
+                {galaTables.map((table) => (
+                  <li key={table.tableNumber} className="mb-1 flex items-center gap-2">
+                    <span>Table {table.tableNumber} (Host: {table.host || 'N/A'}) - Guests: {table.guests.join(', ')}</span>
+                    <Button size="sm" variant="destructive" onClick={() => removeTable(table.tableNumber)}>
+                      Remove
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            {/* Auction Items */}
+            <div>
+              <h4 className="font-semibold mb-2">Auction Items</h4>
+              <div className="flex gap-2 mb-2">
+                <Input
+                  placeholder="Item Name"
+                  value={newAuctionName}
+                  onChange={(e) => setNewAuctionName(e.target.value)}
+                />
+                <Input
+                  placeholder="Description"
+                  value={newAuctionDesc}
+                  onChange={(e) => setNewAuctionDesc(e.target.value)}
+                />
+                <Input
+                  placeholder="Starting Bid"
+                  value={newAuctionStartBid}
+                  onChange={(e) => setNewAuctionStartBid(e.target.value)}
+                  type="number"
+                  min={0}
+                />
+                <Button onClick={addAuctionItem}>Add Item</Button>
+              </div>
+              <ul>
+                {galaAuctionItems.map((item) => (
+                  <li key={item.id} className="mb-1 flex items-center gap-2">
+                    <span>{item.name} (${item.startingBid}) - {item.description}</span>
+                    <Button size="sm" variant="destructive" onClick={() => removeAuctionItem(item.id)}>
+                      Remove
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            {/* Donation Goal */}
+            <div>
+              <h4 className="font-semibold mb-2">Donation Goal</h4>
+              <Input
+                placeholder="Donation Goal"
+                value={galaDonationGoal}
+                onChange={(e) => setGalaDonationGoal(e.target.value)}
+                type="number"
+                min={0}
+              />
+            </div>
+            {/* Invitees */}
+            <div>
+              <h4 className="font-semibold mb-2">Invitees</h4>
+              <div className="flex gap-2 mb-2">
+                <Input
+                  placeholder="Name"
+                  value={newInviteeName}
+                  onChange={(e) => setNewInviteeName(e.target.value)}
+                />
+                <Input
+                  placeholder="Email"
+                  value={newInviteeEmail}
+                  onChange={(e) => setNewInviteeEmail(e.target.value)}
+                />
+                <label className="flex items-center gap-1">
+                  <input type="checkbox" checked={newInviteeVIP} onChange={(e) => setNewInviteeVIP(e.target.checked)} /> VIP
+                </label>
+                <Button onClick={addInvitee}>Add Invitee</Button>
+              </div>
+              <ul>
+                {galaInvitees.map((invitee) => (
+                  <li key={invitee.email} className="mb-1 flex items-center gap-2">
+                    <span>{invitee.name} ({invitee.email}) {invitee.isVIP && <span className="text-yellow-600 font-bold">VIP</span>}</span>
+                    <Button size="sm" variant="destructive" onClick={() => removeInvitee(invitee.email)}>
+                      Remove
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            {/* Performers/Speakers */}
+            <div>
+              <h4 className="font-semibold mb-2">Performers / Speakers</h4>
+              <div className="flex gap-2 mb-2">
+                <Input
+                  placeholder="Name"
+                  value={newPerformerName}
+                  onChange={(e) => setNewPerformerName(e.target.value)}
+                />
+                <Input
+                  placeholder="Role (e.g., Speaker, Musician)"
+                  value={newPerformerRole}
+                  onChange={(e) => setNewPerformerRole(e.target.value)}
+                />
+                <Input
+                  placeholder="Bio"
+                  value={newPerformerBio}
+                  onChange={(e) => setNewPerformerBio(e.target.value)}
+                />
+                <Input
+                  placeholder="Photo URL"
+                  value={newPerformerPhoto}
+                  onChange={(e) => setNewPerformerPhoto(e.target.value)}
+                />
+                <Button onClick={addPerformer}>Add Performer</Button>
+              </div>
+              <ul>
+                {galaPerformers.map((p) => (
+                  <li key={p.name} className="mb-1 flex items-center gap-2">
+                    <span>{p.name} ({p.role})</span>
+                    <Button size="sm" variant="destructive" onClick={() => removePerformer(p.name)}>
+                      Remove
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            {/* Program Schedule */}
+            <div>
+              <h4 className="font-semibold mb-2">Program Schedule</h4>
+              <div className="flex gap-2 mb-2">
+                <Input
+                  placeholder="Time (e.g., 19:00)"
+                  value={newProgramTime}
+                  onChange={(e) => setNewProgramTime(e.target.value)}
+                />
+                <Input
+                  placeholder="Title"
+                  value={newProgramTitle}
+                  onChange={(e) => setNewProgramTitle(e.target.value)}
+                />
+                <Input
+                  placeholder="Description"
+                  value={newProgramDesc}
+                  onChange={(e) => setNewProgramDesc(e.target.value)}
+                />
+                <Button onClick={addProgramItem}>Add Item</Button>
+              </div>
+              <ul>
+                {galaProgram.map((item) => (
+                  <li key={item.title} className="mb-1 flex items-center gap-2">
+                    <span>{item.time} - {item.title}</span>
+                    <Button size="sm" variant="destructive" onClick={() => removeProgramItem(item.title)}>
+                      Remove
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        )}
+
+        {/* Marathon-specific fields */}
+        {formData.type === 'marathon' && (
+          <div className="space-y-6 mt-6">
+            {/* Race Categories */}
+            <div>
+              <h4 className="font-semibold mb-2">Race Categories</h4>
+              <div className="flex gap-2 mb-2">
+                <Input
+                  placeholder="Category Name (e.g., Full Marathon)"
+                  value={newCategoryName}
+                  onChange={(e) => setNewCategoryName(e.target.value)}
+                />
+                <Input
+                  placeholder="Distance (km)"
+                  type="number"
+                  value={newCategoryDistance}
+                  onChange={(e) => setNewCategoryDistance(e.target.value)}
+                />
+                <Input
+                  placeholder="Start Time (e.g., 06:00)"
+                  value={newCategoryStartTime}
+                  onChange={(e) => setNewCategoryStartTime(e.target.value)}
+                />
+                <Button onClick={addRaceCategory}>Add Category</Button>
+              </div>
+              <ul>
+                {raceCategories.map((cat) => (
+                  <li key={cat.id} className="mb-1 flex items-center gap-2">
+                    <span>{cat.name} - {cat.distanceKm}km (Start: {cat.startTime})</span>
+                    <Button size="sm" variant="destructive" onClick={() => removeRaceCategory(cat.id)}>
+                      Remove
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            {/* Route Map */}
+            <div>
+              <h4 className="font-semibold mb-2">Route Map</h4>
+              <Input
+                placeholder="Route Map Image URL or Google Maps Link"
+                value={routeMapUrl}
+                onChange={(e) => setRouteMapUrl(e.target.value)}
+              />
+              {routeMapUrl && (
+                <div className="mt-2">
+                  <img src={routeMapUrl} alt="Route Map" className="max-w-xs rounded border" />
+                </div>
+              )}
+            </div>
+            {/* Event Schedule */}
+            <div>
+              <h4 className="font-semibold mb-2">Event Schedule</h4>
+              <div className="flex gap-2 mb-2">
+                <Input
+                  placeholder="Time (e.g., 05:30)"
+                  value={newScheduleTime}
+                  onChange={(e) => setNewScheduleTime(e.target.value)}
+                />
+                <Input
+                  placeholder="Title"
+                  value={newScheduleTitle}
+                  onChange={(e) => setNewScheduleTitle(e.target.value)}
+                />
+                <Input
+                  placeholder="Description"
+                  value={newScheduleDesc}
+                  onChange={(e) => setNewScheduleDesc(e.target.value)}
+                />
+                <Button onClick={addScheduleItem}>Add Item</Button>
+              </div>
+              <ul>
+                {marathonSchedule.map((item) => (
+                  <li key={item.title} className="mb-1 flex items-center gap-2">
+                    <span>{item.time} - {item.title}</span>
+                    <Button size="sm" variant="destructive" onClick={() => removeScheduleItem(item.title)}>
+                      Remove
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        )}
+
+        {/* Concert-specific fields */}
+        {formData.type === 'concert' && (
+          <div className="space-y-6 mt-6">
+            {/* Performer Lineup */}
+            <div>
+              <h4 className="font-semibold mb-2">Performer Lineup</h4>
+              <div className="flex flex-col gap-2 mb-2">
+                <Input placeholder="Name" value={newPerformer.name} onChange={e => setNewPerformer(prev => ({ ...prev, name: e.target.value }))} />
+                <Input placeholder="Bio" value={newPerformer.bio} onChange={e => setNewPerformer(prev => ({ ...prev, bio: e.target.value }))} />
+                <Input placeholder="Photo URL" value={newPerformer.photoUrl} onChange={e => setNewPerformer(prev => ({ ...prev, photoUrl: e.target.value }))} />
+                <Input placeholder="Set Time (e.g., 20:00)" value={newPerformer.setTime} onChange={e => setNewPerformer(prev => ({ ...prev, setTime: e.target.value }))} />
+                <div className="flex flex-col gap-1">
+                  <span className="text-xs font-medium">Social Links</span>
+                  {newPerformer.socialLinks.map((link, idx) => (
+                    <div key={idx} className="flex gap-2 mb-1">
+                      <Input placeholder="Platform" value={link.platform} onChange={e => updatePerformerSocialLink(idx, 'platform', e.target.value)} />
+                      <Input placeholder="URL" value={link.url} onChange={e => updatePerformerSocialLink(idx, 'url', e.target.value)} />
+                      <Button size="sm" variant="destructive" onClick={() => removePerformerSocialLink(idx)}>Remove</Button>
+                    </div>
+                  ))}
+                  <Button size="sm" variant="outline" onClick={addPerformerSocialLink}>Add Social Link</Button>
+                </div>
+                <Button onClick={addPerformer}>Add Performer</Button>
+              </div>
+              <ul>
+                {performerLineup.map(p => (
+                  <li key={p.id} className="mb-1 flex items-center gap-2">
+                    <span>{p.name} {p.setTime && <span className="text-xs text-gray-500">({p.setTime})</span>}</span>
+                    <Button size="sm" variant="destructive" onClick={() => removePerformer(p.id)}>Remove</Button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            {/* Concert Schedule */}
+            <div>
+              <h4 className="font-semibold mb-2">Concert Schedule</h4>
+              <div className="flex gap-2 mb-2">
+                <Input placeholder="Time (e.g., 19:00)" value={newScheduleTime} onChange={e => setNewScheduleTime(e.target.value)} />
+                <Input placeholder="Title" value={newScheduleTitle} onChange={e => setNewScheduleTitle(e.target.value)} />
+                <Input placeholder="Description" value={newScheduleDesc} onChange={e => setNewScheduleDesc(e.target.value)} />
+                <Button onClick={addConcertScheduleItem}>Add Item</Button>
+              </div>
+              <ul>
+                {concertSchedule.map(item => (
+                  <li key={item.title} className="mb-1 flex items-center gap-2">
+                    <span>{item.time} - {item.title}</span>
+                    <Button size="sm" variant="destructive" onClick={() => removeConcertScheduleItem(item.title)}>Remove</Button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            {/* Ticket Types */}
+            <div>
+              <h4 className="font-semibold mb-2">Ticket Types</h4>
+              <div className="flex gap-2 mb-2">
+                <Input placeholder="Type Name (e.g., VIP)" value={newTicketType.name} onChange={e => setNewTicketType(prev => ({ ...prev, name: e.target.value }))} />
+                <Input placeholder="Price" type="number" value={newTicketType.price} onChange={e => setNewTicketType(prev => ({ ...prev, price: e.target.value }))} />
+                <Input placeholder="Description" value={newTicketType.description} onChange={e => setNewTicketType(prev => ({ ...prev, description: e.target.value }))} />
+                <Input placeholder="Quantity" type="number" value={newTicketType.quantity} onChange={e => setNewTicketType(prev => ({ ...prev, quantity: e.target.value }))} />
+                <Button onClick={addTicketType}>Add Ticket Type</Button>
+              </div>
+              <ul>
+                {ticketTypes.map(t => (
+                  <li key={t.id} className="mb-1 flex items-center gap-2">
+                    <span>{t.name} - ${t.price} {t.quantity && <span className="text-xs text-gray-500">({t.quantity} available)</span>}</span>
+                    <Button size="sm" variant="destructive" onClick={() => removeTicketType(t.id)}>Remove</Button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            {/* Seat Map (Sitting Sections) */}
+            <div className="space-y-2">
+              <h4 className="font-semibold mb-2">Seat Map (Sitting Sections)</h4>
+              <div className="flex gap-2 mb-2">
+                <Input placeholder="Section Name (e.g., Orchestra)" value={newSectionName} onChange={e => setNewSectionName(e.target.value)} />
+                <Button onClick={addSection}>Add Section</Button>
+              </div>
+              <ul>
+                {seatMap.map(section => (
+                  <li key={section.id} className="mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold">{section.name}</span>
+                      <Button size="sm" variant="destructive" onClick={() => removeSection(section.id)}>Remove</Button>
+                    </div>
+                    <div className="flex gap-2 mt-1">
+                      <Input placeholder="Seat Label (e.g., A1)" value={selectedSectionId === section.id ? newSeatLabel : ''} onChange={e => { setSelectedSectionId(section.id); setNewSeatLabel(e.target.value); }} />
+                      <Button size="sm" onClick={() => { setSelectedSectionId(section.id); addSeat(); }}>Add Seat</Button>
+                    </div>
+                    <ul className="flex flex-wrap gap-2 mt-1">
+                      {section.seats.map(seat => (
+                        <li key={seat.id} className="border rounded px-2 py-1 text-xs flex items-center gap-1">
+                          {seat.label}
+                          <Button size="sm" variant="destructive" onClick={() => removeSeat(section.id, seat.id)}>x</Button>
+                        </li>
+                      ))}
+                    </ul>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            {/* Standing Sections */}
+            <div className="space-y-2 mt-4">
+              <h4 className="font-semibold mb-2">Standing Sections</h4>
+              <div className="flex gap-2 mb-2">
+                <Input placeholder="Standing Area Name" value={newStandingName} onChange={e => setNewStandingName(e.target.value)} />
+                <Input placeholder="Capacity" type="number" value={newStandingCapacity} onChange={e => setNewStandingCapacity(e.target.value)} />
+                <Button onClick={addStandingSection}>Add Standing Section</Button>
+              </div>
+              <ul>
+                {standingSections.map(s => (
+                  <li key={s.id} className="mb-1 flex items-center gap-2">
+                    <span>{s.name} (Capacity: {s.capacity}, Sold: {s.ticketsSold})</span>
+                    <Button size="sm" variant="destructive" onClick={() => removeStandingSection(s.id)}>Remove</Button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        )}
 
         {/* Navigation */}
         <div className="flex justify-between pt-6 border-t">
