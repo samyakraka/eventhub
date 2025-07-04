@@ -7,13 +7,6 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -23,6 +16,13 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Save,
   Settings,
@@ -34,8 +34,10 @@ import {
   Award,
   Shield,
 } from "lucide-react";
-import type { User, UserProfile } from "@/types";
+import type { User, UserProfile, Ticket, Event, RaceCategory } from "@/types";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 interface UserProfileDialogProps {
   open: boolean;
@@ -79,6 +81,7 @@ export function UserProfileDialog({
     employeeCount: undefined,
     industry: "",
     businessDescription: "",
+    website: "",
     socialMediaLinks: {
       facebook: "",
       twitter: "",
@@ -346,49 +349,38 @@ export function UserProfileDialog({
               {/* Organization Information */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-lg flex items-center">
-                    <Building2 className="w-5 h-5 mr-2" />
-                    Organization Information
-                  </CardTitle>
+                  <CardTitle className="text-lg">Organization Information</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="organizationName">
-                        Organization Name *
-                      </Label>
+                      <Label htmlFor="organizationName">Organization Name</Label>
                       <Input
                         id="organizationName"
                         value={formData.organizationName || ""}
                         onChange={(e) =>
                           handleInputChange("organizationName", e.target.value)
                         }
-                        placeholder="Enter organization name"
-                        required
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="organizationType">
-                        Organization Type
-                      </Label>
+                      <Label htmlFor="organizationType">Organization Type</Label>
                       <Select
-                        value={formData.organizationType || ""}
                         onValueChange={(value) =>
                           handleInputChange("organizationType", value)
                         }
+                        defaultValue={formData.organizationType || ""}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Select organization type" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="nonprofit">Non-Profit</SelectItem>
-                          <SelectItem value="corporate">Corporate</SelectItem>
-                          <SelectItem value="educational">
-                            Educational
-                          </SelectItem>
-                          <SelectItem value="government">Government</SelectItem>
-                          <SelectItem value="individual">Individual</SelectItem>
-                          <SelectItem value="other">Other</SelectItem>
+                          <SelectItem value="Corporation">Corporation</SelectItem>
+                          <SelectItem value="LLC">LLC</SelectItem>
+                          <SelectItem value="Sole Proprietorship">Sole Proprietorship</SelectItem>
+                          <SelectItem value="Partnership">Partnership</SelectItem>
+                          <SelectItem value="Non-Profit">Non-Profit</SelectItem>
+                          <SelectItem value="Government">Government</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -396,14 +388,13 @@ export function UserProfileDialog({
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="taxId">Tax ID / EIN</Label>
+                      <Label htmlFor="taxId">Tax ID</Label>
                       <Input
                         id="taxId"
                         value={formData.taxId || ""}
                         onChange={(e) =>
                           handleInputChange("taxId", e.target.value)
                         }
-                        placeholder="Enter tax identification number"
                       />
                     </div>
                     <div className="space-y-2">
@@ -414,73 +405,54 @@ export function UserProfileDialog({
                         onChange={(e) =>
                           handleInputChange("businessLicense", e.target.value)
                         }
-                        placeholder="Enter business license number"
                       />
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="establishedYear">Established Year</Label>
                       <Input
                         id="establishedYear"
                         type="number"
-                        min="1800"
-                        max={new Date().getFullYear()}
                         value={formData.establishedYear || ""}
                         onChange={(e) =>
-                          handleInputChange(
-                            "establishedYear",
-                            parseInt(e.target.value)
-                          )
+                          handleInputChange("establishedYear", e.target.value)
                         }
-                        placeholder="YYYY"
                       />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="employeeCount">Employee Count</Label>
-                      <Select
-                        value={formData.employeeCount || ""}
-                        onValueChange={(value) =>
-                          handleInputChange("employeeCount", value)
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select size" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="1-10">1-10</SelectItem>
-                          <SelectItem value="11-50">11-50</SelectItem>
-                          <SelectItem value="51-200">51-200</SelectItem>
-                          <SelectItem value="201-500">201-500</SelectItem>
-                          <SelectItem value="500+">500+</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="industry">Industry</Label>
                       <Input
-                        id="industry"
-                        value={formData.industry || ""}
+                        id="employeeCount"
+                        type="number"
+                        value={formData.employeeCount || ""}
                         onChange={(e) =>
-                          handleInputChange("industry", e.target.value)
+                          handleInputChange("employeeCount", e.target.value)
                         }
-                        placeholder="e.g., Technology, Healthcare"
                       />
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="businessDescription">
-                      Business Description
-                    </Label>
+                    <Label htmlFor="industry">Industry</Label>
+                    <Input
+                      id="industry"
+                      value={formData.industry || ""}
+                      onChange={(e) =>
+                        handleInputChange("industry", e.target.value)
+                      }
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="businessDescription">Business Description</Label>
                     <Textarea
                       id="businessDescription"
                       value={formData.businessDescription || ""}
                       onChange={(e) =>
                         handleInputChange("businessDescription", e.target.value)
                       }
-                      placeholder="Describe your organization and what you do..."
                       rows={3}
                     />
                   </div>
@@ -489,204 +461,207 @@ export function UserProfileDialog({
                     <Label htmlFor="website">Website</Label>
                     <Input
                       id="website"
-                      type="url"
                       value={formData.website || ""}
                       onChange={(e) =>
                         handleInputChange("website", e.target.value)
                       }
-                      placeholder="https://www.yourorganization.com"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="socialMediaLinks">Social Media Links (comma-separated)</Label>
+                    <Input
+                      id="socialMediaLinks"
+                      value={formData.socialMediaLinks?.facebook || ""}
+                      onChange={(e) =>
+                        handleInputChange("socialMediaLinks.facebook", e.target.value)
+                      }
+                      placeholder="https://facebook.com/yourorg"
+                    />
+                    <Input
+                      id="socialMediaLinks"
+                      value={formData.socialMediaLinks?.twitter || ""}
+                      onChange={(e) =>
+                        handleInputChange("socialMediaLinks.twitter", e.target.value)
+                      }
+                      placeholder="https://twitter.com/yourorg"
+                    />
+                    <Input
+                      id="socialMediaLinks"
+                      value={formData.socialMediaLinks?.linkedin || ""}
+                      onChange={(e) =>
+                        handleInputChange("socialMediaLinks.linkedin", e.target.value)
+                      }
+                      placeholder="https://linkedin.com/yourorg"
+                    />
+                    <Input
+                      id="socialMediaLinks"
+                      value={formData.socialMediaLinks?.instagram || ""}
+                      onChange={(e) =>
+                        handleInputChange("socialMediaLinks.instagram", e.target.value)
+                      }
+                      placeholder="https://instagram.com/yourorg"
+                    />
+                    <Input
+                      id="socialMediaLinks"
+                      value={formData.socialMediaLinks?.youtube || ""}
+                      onChange={(e) =>
+                        handleInputChange("socialMediaLinks.youtube", e.target.value)
+                      }
+                      placeholder="https://youtube.com/yourorg"
                     />
                   </div>
                 </CardContent>
               </Card>
 
-              {/* Contact Person */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-lg">
-                    Primary Contact Person
-                  </CardTitle>
+                  <CardTitle className="text-lg">Banking Details</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="contactPersonName">Contact Name</Label>
+                      <Label htmlFor="bankingDetails.accountHolderName">Account Holder Name</Label>
                       <Input
-                        id="contactPersonName"
-                        value={formData.contactPerson?.name || ""}
+                        id="bankingDetails.accountHolderName"
+                        value={formData.bankingDetails?.accountHolderName || ""}
                         onChange={(e) =>
-                          handleInputChange(
-                            "contactPerson.name",
-                            e.target.value
-                          )
+                          handleInputChange("bankingDetails.accountHolderName", e.target.value)
                         }
-                        placeholder="Full name"
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="contactPersonTitle">Title</Label>
+                      <Label htmlFor="bankingDetails.bankName">Bank Name</Label>
                       <Input
-                        id="contactPersonTitle"
-                        value={formData.contactPerson?.title || ""}
+                        id="bankingDetails.bankName"
+                        value={formData.bankingDetails?.bankName || ""}
                         onChange={(e) =>
-                          handleInputChange(
-                            "contactPerson.title",
-                            e.target.value
-                          )
+                          handleInputChange("bankingDetails.bankName", e.target.value)
                         }
-                        placeholder="Job title"
                       />
                     </div>
                   </div>
+
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="contactPersonEmail">Contact Email</Label>
+                      <Label htmlFor="bankingDetails.accountNumber">Account Number</Label>
                       <Input
-                        id="contactPersonEmail"
+                        id="bankingDetails.accountNumber"
+                        value={formData.bankingDetails?.accountNumber || ""}
+                        onChange={(e) =>
+                          handleInputChange("bankingDetails.accountNumber", e.target.value)
+                        }
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="bankingDetails.routingNumber">Routing Number</Label>
+                      <Input
+                        id="bankingDetails.routingNumber"
+                        value={formData.bankingDetails?.routingNumber || ""}
+                        onChange={(e) =>
+                          handleInputChange("bankingDetails.routingNumber", e.target.value)
+                        }
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="bankingDetails.swiftCode">SWIFT Code</Label>
+                    <Input
+                      id="bankingDetails.swiftCode"
+                      value={formData.bankingDetails?.swiftCode || ""}
+                      onChange={(e) =>
+                        handleInputChange("bankingDetails.swiftCode", e.target.value)
+                      }
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Contact Person</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="contactPerson.name">Name</Label>
+                      <Input
+                        id="contactPerson.name"
+                        value={formData.contactPerson?.name || ""}
+                        onChange={(e) =>
+                          handleInputChange("contactPerson.name", e.target.value)
+                        }
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="contactPerson.title">Title</Label>
+                      <Input
+                        id="contactPerson.title"
+                        value={formData.contactPerson?.title || ""}
+                        onChange={(e) =>
+                          handleInputChange("contactPerson.title", e.target.value)
+                        }
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="contactPerson.email">Email</Label>
+                      <Input
+                        id="contactPerson.email"
                         type="email"
                         value={formData.contactPerson?.email || ""}
                         onChange={(e) =>
-                          handleInputChange(
-                            "contactPerson.email",
-                            e.target.value
-                          )
+                          handleInputChange("contactPerson.email", e.target.value)
                         }
-                        placeholder="contact@organization.com"
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="contactPersonPhone">Contact Phone</Label>
+                      <Label htmlFor="contactPerson.phone">Phone</Label>
                       <Input
-                        id="contactPersonPhone"
+                        id="contactPerson.phone"
                         type="tel"
                         value={formData.contactPerson?.phone || ""}
                         onChange={(e) =>
-                          handleInputChange(
-                            "contactPerson.phone",
-                            e.target.value
-                          )
+                          handleInputChange("contactPerson.phone", e.target.value)
                         }
-                        placeholder="+1 (555) 123-4567"
                       />
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
-              {/* Social Media Links */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-lg">
-                    Social Media Presence
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="facebook">Facebook</Label>
-                      <Input
-                        id="facebook"
-                        value={formData.socialMediaLinks?.facebook || ""}
-                        onChange={(e) =>
-                          handleInputChange(
-                            "socialMediaLinks.facebook",
-                            e.target.value
-                          )
-                        }
-                        placeholder="https://facebook.com/yourorg"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="twitter">Twitter</Label>
-                      <Input
-                        id="twitter"
-                        value={formData.socialMediaLinks?.twitter || ""}
-                        onChange={(e) =>
-                          handleInputChange(
-                            "socialMediaLinks.twitter",
-                            e.target.value
-                          )
-                        }
-                        placeholder="https://twitter.com/yourorg"
-                      />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="linkedin">LinkedIn</Label>
-                      <Input
-                        id="linkedin"
-                        value={formData.socialMediaLinks?.linkedin || ""}
-                        onChange={(e) =>
-                          handleInputChange(
-                            "socialMediaLinks.linkedin",
-                            e.target.value
-                          )
-                        }
-                        placeholder="https://linkedin.com/company/yourorg"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="instagram">Instagram</Label>
-                      <Input
-                        id="instagram"
-                        value={formData.socialMediaLinks?.instagram || ""}
-                        onChange={(e) =>
-                          handleInputChange(
-                            "socialMediaLinks.instagram",
-                            e.target.value
-                          )
-                        }
-                        placeholder="https://instagram.com/yourorg"
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="youtube">YouTube</Label>
-                    <Input
-                      id="youtube"
-                      value={formData.socialMediaLinks?.youtube || ""}
-                      onChange={(e) =>
-                        handleInputChange(
-                          "socialMediaLinks.youtube",
-                          e.target.value
-                        )
-                      }
-                      placeholder="https://youtube.com/c/yourorg"
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Event Management Experience */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg flex items-center">
-                    <Award className="w-5 h-5 mr-2" />
-                    Event Management Experience
-                  </CardTitle>
+                  <CardTitle className="text-lg">Event Management Experience</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="eventManagementExperience">
-                      Experience Description
+                      Describe your experience managing events
                     </Label>
                     <Textarea
                       id="eventManagementExperience"
                       value={formData.eventManagementExperience || ""}
                       onChange={(e) =>
-                        handleInputChange(
-                          "eventManagementExperience",
-                          e.target.value
-                        )
+                        handleInputChange("eventManagementExperience", e.target.value)
                       }
-                      placeholder="Describe your event management experience..."
                       rows={3}
                     />
                   </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Specializations</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="specializations">
-                      Specializations (comma-separated)
+                      List your areas of specialization (comma-separated)
                     </Label>
                     <Input
                       id="specializations"
@@ -694,12 +669,20 @@ export function UserProfileDialog({
                       onChange={(e) =>
                         handleArrayChange("specializations", e.target.value)
                       }
-                      placeholder="Corporate Events, Weddings, Conferences, Concerts"
+                      placeholder="e.g., Marathon, Gala, Concert"
                     />
                   </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Certifications</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="certifications">
-                      Certifications (comma-separated)
+                      List your relevant certifications (comma-separated)
                     </Label>
                     <Input
                       id="certifications"
@@ -707,141 +690,48 @@ export function UserProfileDialog({
                       onChange={(e) =>
                         handleArrayChange("certifications", e.target.value)
                       }
-                      placeholder="CMP, CSEP, CMM, PMP"
+                      placeholder="e.g., Event Management, First Aid"
                     />
                   </div>
                 </CardContent>
               </Card>
 
-              {/* Banking Details */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-lg flex items-center">
-                    <Shield className="w-5 h-5 mr-2" />
-                    Banking Information (Optional)
-                  </CardTitle>
-                  <p className="text-sm text-gray-600">
-                    For payment processing and refunds
-                  </p>
+                  <CardTitle className="text-lg">Insurance Information</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="accountHolderName">
-                        Account Holder Name
-                      </Label>
+                      <Label htmlFor="insuranceInfo.provider">Insurance Provider</Label>
                       <Input
-                        id="accountHolderName"
-                        value={formData.bankingDetails?.accountHolderName || ""}
-                        onChange={(e) =>
-                          handleInputChange(
-                            "bankingDetails.accountHolderName",
-                            e.target.value
-                          )
-                        }
-                        placeholder="Account holder name"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="bankName">Bank Name</Label>
-                      <Input
-                        id="bankName"
-                        value={formData.bankingDetails?.bankName || ""}
-                        onChange={(e) =>
-                          handleInputChange(
-                            "bankingDetails.bankName",
-                            e.target.value
-                          )
-                        }
-                        placeholder="Bank name"
-                      />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="accountNumber">Account Number</Label>
-                      <Input
-                        id="accountNumber"
-                        value={formData.bankingDetails?.accountNumber || ""}
-                        onChange={(e) =>
-                          handleInputChange(
-                            "bankingDetails.accountNumber",
-                            e.target.value
-                          )
-                        }
-                        placeholder="Account number"
-                        type="password"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="routingNumber">Routing Number</Label>
-                      <Input
-                        id="routingNumber"
-                        value={formData.bankingDetails?.routingNumber || ""}
-                        onChange={(e) =>
-                          handleInputChange(
-                            "bankingDetails.routingNumber",
-                            e.target.value
-                          )
-                        }
-                        placeholder="Routing number"
-                      />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Insurance Information */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">
-                    Insurance Information (Optional)
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="insuranceProvider">
-                        Insurance Provider
-                      </Label>
-                      <Input
-                        id="insuranceProvider"
+                        id="insuranceInfo.provider"
                         value={formData.insuranceInfo?.provider || ""}
                         onChange={(e) =>
-                          handleInputChange(
-                            "insuranceInfo.provider",
-                            e.target.value
-                          )
+                          handleInputChange("insuranceInfo.provider", e.target.value)
                         }
-                        placeholder="Insurance company name"
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="policyNumber">Policy Number</Label>
+                      <Label htmlFor="insuranceInfo.policyNumber">Policy Number</Label>
                       <Input
-                        id="policyNumber"
+                        id="insuranceInfo.policyNumber"
                         value={formData.insuranceInfo?.policyNumber || ""}
                         onChange={(e) =>
-                          handleInputChange(
-                            "insuranceInfo.policyNumber",
-                            e.target.value
-                          )
+                          handleInputChange("insuranceInfo.policyNumber", e.target.value)
                         }
-                        placeholder="Policy number"
                       />
                     </div>
                   </div>
+
                   <div className="space-y-2">
-                    <Label htmlFor="insuranceExpiry">Policy Expiry Date</Label>
+                    <Label htmlFor="insuranceInfo.expiryDate">Expiry Date</Label>
                     <Input
-                      id="insuranceExpiry"
+                      id="insuranceInfo.expiryDate"
                       type="date"
                       value={formData.insuranceInfo?.expiryDate || ""}
                       onChange={(e) =>
-                        handleInputChange(
-                          "insuranceInfo.expiryDate",
-                          e.target.value
-                        )
+                        handleInputChange("insuranceInfo.expiryDate", e.target.value)
                       }
                     />
                   </div>
@@ -853,9 +743,7 @@ export function UserProfileDialog({
               {/* Personal Information for Attendees */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-lg">
-                    Personal Information
-                  </CardTitle>
+                  <CardTitle className="text-lg">Personal Information</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -888,9 +776,7 @@ export function UserProfileDialog({
                         id="phone"
                         type="tel"
                         value={formData.phone || ""}
-                        onChange={(e) =>
-                          handleInputChange("phone", e.target.value)
-                        }
+                        onChange={(e) => handleInputChange("phone", e.target.value)}
                       />
                     </div>
                     <div className="space-y-2">
@@ -931,9 +817,7 @@ export function UserProfileDialog({
                     <Input
                       id="address"
                       value={formData.address || ""}
-                      onChange={(e) =>
-                        handleInputChange("address", e.target.value)
-                      }
+                      onChange={(e) => handleInputChange("address", e.target.value)}
                     />
                   </div>
 
@@ -943,9 +827,7 @@ export function UserProfileDialog({
                       <Input
                         id="city"
                         value={formData.city || ""}
-                        onChange={(e) =>
-                          handleInputChange("city", e.target.value)
-                        }
+                        onChange={(e) => handleInputChange("city", e.target.value)}
                       />
                     </div>
                     <div className="space-y-2">
@@ -953,9 +835,7 @@ export function UserProfileDialog({
                       <Input
                         id="state"
                         value={formData.state || ""}
-                        onChange={(e) =>
-                          handleInputChange("state", e.target.value)
-                        }
+                        onChange={(e) => handleInputChange("state", e.target.value)}
                       />
                     </div>
                     <div className="space-y-2">
@@ -975,9 +855,7 @@ export function UserProfileDialog({
                     <Input
                       id="country"
                       value={formData.country || ""}
-                      onChange={(e) =>
-                        handleInputChange("country", e.target.value)
-                      }
+                      onChange={(e) => handleInputChange("country", e.target.value)}
                     />
                   </div>
                 </CardContent>
@@ -1040,9 +918,7 @@ export function UserProfileDialog({
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="accessibilityNeeds">
-                      Accessibility Needs
-                    </Label>
+                    <Label htmlFor="accessibilityNeeds">Accessibility Needs</Label>
                     <Textarea
                       id="accessibilityNeeds"
                       value={formData.accessibilityNeeds || ""}
@@ -1055,77 +931,86 @@ export function UserProfileDialog({
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Preferences */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center">
+                    <Settings className="w-4 h-4 mr-2" />
+                    Preferences
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
+                    <div>
+                      <Label htmlFor="autoFillEnabled" className="font-medium">
+                        Enable Auto-fill
+                      </Label>
+                      <p className="text-sm text-gray-600">
+                        Automatically fill registration forms with your saved
+                        information
+                      </p>
+                    </div>
+                    <Switch
+                      id="autoFillEnabled"
+                      checked={formData.autoFillEnabled || false}
+                      onCheckedChange={(checked) =>
+                        handleInputChange("autoFillEnabled", checked)
+                      }
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
+                    <div>
+                      <Label htmlFor="emailNotifications" className="font-medium">
+                        Email Notifications
+                      </Label>
+                      <p className="text-sm text-gray-600">
+                        Receive event updates and reminders via email
+                      </p>
+                    </div>
+                    <Switch
+                      id="emailNotifications"
+                      checked={formData.emailNotifications || false}
+                      onCheckedChange={(checked) =>
+                        handleInputChange("emailNotifications", checked)
+                      }
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
+                    <div>
+                      <Label htmlFor="smsNotifications" className="font-medium">
+                        SMS Notifications
+                      </Label>
+                      <p className="text-sm text-gray-600">
+                        Receive event updates and reminders via text message
+                      </p>
+                    </div>
+                    <Switch
+                      id="smsNotifications"
+                      checked={formData.smsNotifications || false}
+                      onCheckedChange={(checked) =>
+                        handleInputChange("smsNotifications", checked)
+                      }
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* MarathonStats card from your version */}
+              {user && (
+                <Card className="mt-8">
+                  <CardHeader>
+                    <CardTitle className="text-lg">Marathon Stats</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <MarathonStats userId={user.uid} />
+                  </CardContent>
+                </Card>
+              )}
             </>
           )}
-
-          {/* Preferences */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center">
-                <Settings className="w-4 h-4 mr-2" />
-                Preferences
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
-                <div>
-                  <Label htmlFor="autoFillEnabled" className="font-medium">
-                    Enable Auto-fill
-                  </Label>
-                  <p className="text-sm text-gray-600">
-                    {isOrganizer
-                      ? "Automatically fill event creation forms with your organization information"
-                      : "Automatically fill registration forms with your saved information"}
-                  </p>
-                </div>
-                <Switch
-                  id="autoFillEnabled"
-                  checked={formData.autoFillEnabled || false}
-                  onCheckedChange={(checked) =>
-                    handleInputChange("autoFillEnabled", checked)
-                  }
-                />
-              </div>
-
-              <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
-                <div>
-                  <Label htmlFor="emailNotifications" className="font-medium">
-                    Email Notifications
-                  </Label>
-                  <p className="text-sm text-gray-600">
-                    Receive {isOrganizer ? "event management" : "event"} updates
-                    and reminders via email
-                  </p>
-                </div>
-                <Switch
-                  id="emailNotifications"
-                  checked={formData.emailNotifications || false}
-                  onCheckedChange={(checked) =>
-                    handleInputChange("emailNotifications", checked)
-                  }
-                />
-              </div>
-
-              <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
-                <div>
-                  <Label htmlFor="smsNotifications" className="font-medium">
-                    SMS Notifications
-                  </Label>
-                  <p className="text-sm text-gray-600">
-                    Receive {isOrganizer ? "event management" : "event"} updates
-                    and reminders via text message
-                  </p>
-                </div>
-                <Switch
-                  id="smsNotifications"
-                  checked={formData.smsNotifications || false}
-                  onCheckedChange={(checked) =>
-                    handleInputChange("smsNotifications", checked)
-                  }
-                />
-              </div>
-            </CardContent>
-          </Card>
 
           {/* Submit Button */}
           <div className="flex justify-end space-x-4 pt-6 border-t">
@@ -1157,5 +1042,51 @@ export function UserProfileDialog({
         </form>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function MarathonStats({ userId }: { userId: string }) {
+  const [tickets, setTickets] = useState<(Ticket & { event?: Event })[]>([]);
+  useEffect(() => {
+    const fetchTickets = async () => {
+      const q = query(collection(db, 'tickets'), where('attendeeUid', '==', userId));
+      const qs = await getDocs(q);
+      const ticketsData = await Promise.all(qs.docs.map(async (docSnap) => {
+        const data = docSnap.data() as Ticket;
+        const eventDoc = await getDoc(doc(db, 'events', data.eventId));
+        let event: Event | undefined = undefined;
+        if (eventDoc.exists()) {
+          event = { id: eventDoc.id, ...eventDoc.data() } as Event;
+        }
+        return { ...data, event };
+      }));
+      setTickets(ticketsData.filter(t => t.event?.type === 'marathon'));
+    };
+    fetchTickets();
+  }, [userId]);
+  if (tickets.length === 0) return <div className="text-gray-500">No marathon registrations yet.</div>;
+  return (
+    <table className="min-w-full text-sm">
+      <thead>
+        <tr>
+          <th className="px-2 py-1 text-left">Event</th>
+          <th className="px-2 py-1 text-left">Bib</th>
+          <th className="px-2 py-1 text-left">Category</th>
+          <th className="px-2 py-1 text-left">T-Shirt</th>
+          <th className="px-2 py-1 text-left">Finish Time</th>
+        </tr>
+      </thead>
+      <tbody>
+        {tickets.map((t) => (
+          <tr key={t.id} className="border-b">
+            <td className="px-2 py-1">{t.event?.title || 'N/A'}</td>
+            <td className="px-2 py-1">{t.registrationData?.bibNumber || 'N/A'}</td>
+            <td className="px-2 py-1">{t.event?.raceCategories?.find((c: RaceCategory) => c.id === t.registrationData?.selectedCategoryId)?.name || 'N/A'}</td>
+            <td className="px-2 py-1">{t.registrationData?.tShirtSize || 'N/A'}</td>
+            <td className="px-2 py-1">{t.registrationData?.finishTime || '—'}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
 }
